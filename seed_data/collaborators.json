@@ -1,0 +1,782 @@
+[
+  {
+    "employeeCode": "CTV001",
+    "fullName": "Đỗ Xuân Yến",
+    "taxCode": "8786335019",
+    "dob": "1991-03-10",
+    "idNumber": "079090000001",
+    "email": "do.xuan.yen1@example.com",
+    "phone": "0910000137",
+    "address": "188 Trần Phú, TP. Nha Trang, Khánh Hòa",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "liquidationDate": null,
+      "submittedCV": true,
+      "submittedResidenceInfo": true,
+      "submittedDegree": true,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ]
+    },
+    "createdAt": "2024-12-15T02:00:00.000Z",
+    "updatedAt": "2024-12-15T02:00:00.000Z"
+  },
+  {
+    "employeeCode": "CTV002",
+    "fullName": "Hoàng Đức Giang",
+    "taxCode": "9380837730",
+    "dob": "1993-01-15",
+    "idNumber": "079090000002",
+    "email": "hoang.duc.giang2@example.com",
+    "phone": "0910000274",
+    "address": "44 Hai Bà Trưng, Quận Hoàn Kiếm, Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": true,
+      "liquidationDate": null,
+      "submittedCV": true,
+      "submittedResidenceInfo": true,
+      "submittedDegree": true,
+      "serviceContracts": [
+        {
+          "startDate": "2022-07-27",
+          "endDate": null
+        }
+      ]
+    },
+    "createdAt": "2024-05-24T02:00:00.000Z",
+    "updatedAt": "2024-05-24T02:00:00.000Z"
+  },
+  {
+    "employeeCode": "CTV003",
+    "fullName": "Lê Ngọc An",
+    "taxCode": "8396143460",
+    "dob": "1989-01-18",
+    "idNumber": "079090000003",
+    "email": "le.ngoc.an3@example.com",
+    "phone": "0910000411",
+    "address": "156 Trần Hưng Đạo, Quận 5, TP. Hồ Chí Minh",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": true,
+      "liquidationDate": null,
+      "submittedCV": true,
+      "submittedResidenceInfo": true,
+      "submittedDegree": true,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ]
+    },
+    "createdAt": "2023-11-23T02:00:00.000Z",
+    "updatedAt": "2023-11-23T02:00:00.000Z"
+  },
+  {
+    "employeeCode": "CTV004",
+    "fullName": "Lê Ngọc Nam",
+    "taxCode": "9107888078",
+    "dob": "1996-02-14",
+    "idNumber": "079090000004",
+    "email": "le.ngoc.nam4@example.com",
+    "phone": "0910000548",
+    "address": "105 Nguyễn Huệ, Quận Ninh Kiều, Cần Thơ",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "liquidationDate": null,
+      "submittedCV": true,
+      "submittedResidenceInfo": true,
+      "submittedDegree": true,
+      "serviceContracts": [
+        {
+          "startDate": "2023-10-17",
+          "endDate": null
+        }
+      ]
+    },
+    "createdAt": "2022-12-01T02:00:00.000Z",
+    "updatedAt": "2022-12-01T02:00:00.000Z"
+  },
+  {
+    "employeeCode": "CTV005",
+    "fullName": "Phạm Đức Nam",
+    "taxCode": "9905511594",
+    "dob": "1988-01-14",
+    "idNumber": "079090000005",
+    "email": "pham.duc.nam5@example.com",
+    "phone": "0910000685",
+    "address": "189 Điện Biên Phủ, Quận Bình Thạnh, TP. Hồ Chí Minh",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "liquidationDate": null,
+      "submittedCV": true,
+      "submittedResidenceInfo": true,
+      "submittedDegree": true,
+      "serviceContracts": [
+        {
+          "startDate": "2023-03-16",
+          "endDate": null
+        }
+      ]
+    },
+    "createdAt": "2022-06-12T02:00:00.000Z",
+    "updatedAt": "2022-06-12T02:00:00.000Z"
+  },
+  {
+    "employeeCode": "CTV006",
+    "fullName": "Phan Văn An",
+    "taxCode": "8587175672",
+    "dob": "1987-07-27",
+    "idNumber": "079090000006",
+    "email": "phan.van.an6@example.com",
+    "phone": "0910000822",
+    "address": "122 Trần Hưng Đạo, Quận 5, TP. Hồ Chí Minh",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "liquidationDate": null,
+      "submittedCV": true,
+      "submittedResidenceInfo": true,
+      "submittedDegree": true,
+      "serviceContracts": [
+        {
+          "startDate": "2024-01-16",
+          "endDate": null
+        }
+      ]
+    },
+    "createdAt": "2024-06-25T02:00:00.000Z",
+    "updatedAt": "2024-06-25T02:00:00.000Z"
+  },
+  {
+    "employeeCode": "CTV007",
+    "fullName": "Đặng Văn Đạt",
+    "taxCode": "8725557693",
+    "dob": "1985-07-12",
+    "idNumber": "079090000007",
+    "email": "dang.van.dat7@example.com",
+    "phone": "0910000959",
+    "address": "146 Trần Phú, TP. Nha Trang, Khánh Hòa",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": true,
+      "liquidationDate": null,
+      "submittedCV": true,
+      "submittedResidenceInfo": true,
+      "submittedDegree": true,
+      "serviceContracts": [
+        {
+          "startDate": "2024-05-02",
+          "endDate": "2025-11-28"
+        }
+      ]
+    },
+    "createdAt": "2024-01-25T02:00:00.000Z",
+    "updatedAt": "2024-01-25T02:00:00.000Z"
+  },
+  {
+    "employeeCode": "CTV008",
+    "fullName": "Hoàng Thị Quyên",
+    "taxCode": "9390023361",
+    "dob": "1986-03-25",
+    "idNumber": "079090000008",
+    "email": "hoang.thi.quyen8@example.com",
+    "phone": "0910001096",
+    "address": "140 Lê Lợi, Quận Hải Châu, Đà Nẵng",
+    "checklist": {
+      "submittedIdCard": false,
+      "submittedTaxCommitment": false,
+      "liquidationDate": null,
+      "submittedCV": true,
+      "submittedResidenceInfo": false,
+      "submittedDegree": true,
+      "serviceContracts": [
+        {
+          "startDate": "2022-04-07",
+          "endDate": "2025-10-22"
+        }
+      ]
+    },
+    "createdAt": "2024-05-11T02:00:00.000Z",
+    "updatedAt": "2024-05-11T02:00:00.000Z"
+  },
+  {
+    "employeeCode": "CTV009",
+    "fullName": "Lê Đức Phong",
+    "taxCode": "8409026265",
+    "dob": "1988-05-28",
+    "idNumber": "079090000009",
+    "email": "le.duc.phong9@example.com",
+    "phone": "0910001233",
+    "address": "177 Lê Lợi, Quận Hải Châu, Đà Nẵng",
+    "checklist": {
+      "submittedIdCard": false,
+      "submittedTaxCommitment": true,
+      "liquidationDate": null,
+      "submittedCV": true,
+      "submittedResidenceInfo": false,
+      "submittedDegree": true,
+      "serviceContracts": [
+        {
+          "startDate": "2022-06-15",
+          "endDate": null
+        }
+      ]
+    },
+    "createdAt": "2023-01-21T02:00:00.000Z",
+    "updatedAt": "2023-01-21T02:00:00.000Z"
+  },
+  {
+    "employeeCode": "CTV010",
+    "fullName": "Ngô Hữu Trang",
+    "taxCode": "",
+    "dob": "1992-01-23",
+    "idNumber": "079090000010",
+    "email": "ngo.huu.trang10@example.com",
+    "phone": "0910001370",
+    "address": "25 Lê Lợi, Quận Hải Châu, Đà Nẵng",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "liquidationDate": null,
+      "submittedCV": true,
+      "submittedResidenceInfo": true,
+      "submittedDegree": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ]
+    },
+    "createdAt": "2022-12-08T02:00:00.000Z",
+    "updatedAt": "2022-12-08T02:00:00.000Z"
+  },
+  {
+    "employeeCode": "CTV011",
+    "fullName": "Vũ Quốc Bình",
+    "taxCode": "8984872065",
+    "dob": "1993-06-15",
+    "idNumber": "079090000011",
+    "email": "vu.quoc.binh11@example.com",
+    "phone": "0910001507",
+    "address": "177 Nguyễn Huệ, Quận Ninh Kiều, Cần Thơ",
+    "checklist": {
+      "submittedIdCard": false,
+      "submittedTaxCommitment": false,
+      "liquidationDate": "2025-08-09",
+      "submittedCV": true,
+      "submittedResidenceInfo": false,
+      "submittedDegree": false,
+      "serviceContracts": [
+        {
+          "startDate": "2023-10-10",
+          "endDate": "2024-06-10"
+        }
+      ]
+    },
+    "createdAt": "2023-01-20T02:00:00.000Z",
+    "updatedAt": "2023-01-20T02:00:00.000Z"
+  },
+  {
+    "employeeCode": "CTV012",
+    "fullName": "Dương Ngọc Khánh",
+    "taxCode": "9621550582",
+    "dob": "1985-12-22",
+    "idNumber": "079090000012",
+    "email": "duong.ngoc.khanh12@example.com",
+    "phone": "0910001644",
+    "address": "6 Lê Lợi, Quận Hải Châu, Đà Nẵng",
+    "checklist": {
+      "submittedIdCard": false,
+      "submittedTaxCommitment": true,
+      "liquidationDate": null,
+      "submittedCV": true,
+      "submittedResidenceInfo": true,
+      "submittedDegree": false,
+      "serviceContracts": [
+        {
+          "startDate": "2023-08-15",
+          "endDate": null
+        }
+      ]
+    },
+    "createdAt": "2024-11-07T02:00:00.000Z",
+    "updatedAt": "2024-11-07T02:00:00.000Z"
+  },
+  {
+    "employeeCode": "CTV013",
+    "fullName": "Nguyễn Thanh An",
+    "taxCode": "8261287772",
+    "dob": "2002-01-15",
+    "idNumber": "079090000013",
+    "email": "nguyen.thanh.an13@example.com",
+    "phone": "0910001781",
+    "address": "68 Nguyễn Huệ, Quận Ninh Kiều, Cần Thơ",
+    "checklist": {
+      "submittedIdCard": false,
+      "submittedTaxCommitment": true,
+      "liquidationDate": null,
+      "submittedCV": true,
+      "submittedResidenceInfo": true,
+      "submittedDegree": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ]
+    },
+    "createdAt": "2023-08-27T02:00:00.000Z",
+    "updatedAt": "2023-08-27T02:00:00.000Z"
+  },
+  {
+    "employeeCode": "CTV014",
+    "fullName": "Huỳnh Ngọc Cường",
+    "taxCode": "8079291681",
+    "dob": "1991-03-23",
+    "idNumber": "079090000014",
+    "email": "huynh.ngoc.cuong14@example.com",
+    "phone": "0910001918",
+    "address": "179 Nguyễn Trãi, Quận 1, TP. Hồ Chí Minh",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "liquidationDate": "2024-02-19",
+      "submittedCV": true,
+      "submittedResidenceInfo": true,
+      "submittedDegree": false,
+      "serviceContracts": [
+        {
+          "startDate": "2023-12-10",
+          "endDate": "2025-10-05"
+        }
+      ]
+    },
+    "createdAt": "2022-11-15T02:00:00.000Z",
+    "updatedAt": "2022-11-15T02:00:00.000Z"
+  },
+  {
+    "employeeCode": "CTV015",
+    "fullName": "Hoàng Thị Đạt",
+    "taxCode": "",
+    "dob": "1999-10-20",
+    "idNumber": "079090000015",
+    "email": "hoang.thi.dat15@example.com",
+    "phone": "0910002055",
+    "address": "114 Trần Hưng Đạo, Quận 5, TP. Hồ Chí Minh",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "liquidationDate": null,
+      "submittedCV": true,
+      "submittedResidenceInfo": false,
+      "submittedDegree": false,
+      "serviceContracts": [
+        {
+          "startDate": "2024-09-26",
+          "endDate": null
+        }
+      ]
+    },
+    "createdAt": "2023-08-14T02:00:00.000Z",
+    "updatedAt": "2023-08-14T02:00:00.000Z"
+  },
+  {
+    "employeeCode": "CTV016",
+    "fullName": "Vũ Xuân Mai",
+    "taxCode": "8298172074",
+    "dob": "1989-03-17",
+    "idNumber": "079090000016",
+    "email": "vu.xuan.mai16@example.com",
+    "phone": "0910002192",
+    "address": "144 Trần Hưng Đạo, Quận 5, TP. Hồ Chí Minh",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": true,
+      "liquidationDate": null,
+      "submittedCV": true,
+      "submittedResidenceInfo": true,
+      "submittedDegree": true,
+      "serviceContracts": [
+        {
+          "startDate": "2022-01-26",
+          "endDate": null
+        }
+      ]
+    },
+    "createdAt": "2024-09-24T02:00:00.000Z",
+    "updatedAt": "2024-09-24T02:00:00.000Z"
+  },
+  {
+    "employeeCode": "CTV017",
+    "fullName": "Phạm Anh Quân",
+    "taxCode": "",
+    "dob": "1995-11-04",
+    "idNumber": "079090000017",
+    "email": "pham.anh.quan17@example.com",
+    "phone": "0910002329",
+    "address": "96 Trần Hưng Đạo, Quận 5, TP. Hồ Chí Minh",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": true,
+      "liquidationDate": null,
+      "submittedCV": true,
+      "submittedResidenceInfo": true,
+      "submittedDegree": false,
+      "serviceContracts": [
+        {
+          "startDate": "2023-11-27",
+          "endDate": null
+        }
+      ]
+    },
+    "createdAt": "2022-04-11T02:00:00.000Z",
+    "updatedAt": "2022-04-11T02:00:00.000Z"
+  },
+  {
+    "employeeCode": "CTV018",
+    "fullName": "Đỗ Hữu Uyên",
+    "taxCode": "8413546098",
+    "dob": "1992-04-22",
+    "idNumber": "079090000018",
+    "email": "do.huu.uyen18@example.com",
+    "phone": "0910002466",
+    "address": "5 Lý Thường Kiệt, TP. Vinh, Nghệ An",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": true,
+      "liquidationDate": null,
+      "submittedCV": true,
+      "submittedResidenceInfo": false,
+      "submittedDegree": false,
+      "serviceContracts": [
+        {
+          "startDate": "2023-11-09",
+          "endDate": null
+        }
+      ]
+    },
+    "createdAt": "2023-07-19T02:00:00.000Z",
+    "updatedAt": "2023-07-19T02:00:00.000Z"
+  },
+  {
+    "employeeCode": "CTV019",
+    "fullName": "Hoàng Xuân An",
+    "taxCode": "9263616958",
+    "dob": "1994-10-27",
+    "idNumber": "079090000019",
+    "email": "hoang.xuan.an19@example.com",
+    "phone": "0910002603",
+    "address": "168 Điện Biên Phủ, Quận Bình Thạnh, TP. Hồ Chí Minh",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "liquidationDate": null,
+      "submittedCV": true,
+      "submittedResidenceInfo": true,
+      "submittedDegree": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ]
+    },
+    "createdAt": "2022-02-04T02:00:00.000Z",
+    "updatedAt": "2022-02-04T02:00:00.000Z"
+  },
+  {
+    "employeeCode": "CTV020",
+    "fullName": "Ngô Hữu Linh",
+    "taxCode": "9366834125",
+    "dob": "1987-03-13",
+    "idNumber": "079090000020",
+    "email": "ngo.huu.linh20@example.com",
+    "phone": "0910002740",
+    "address": "148 Trần Hưng Đạo, Quận 5, TP. Hồ Chí Minh",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": true,
+      "liquidationDate": null,
+      "submittedCV": true,
+      "submittedResidenceInfo": true,
+      "submittedDegree": false,
+      "serviceContracts": [
+        {
+          "startDate": "2023-10-04",
+          "endDate": null
+        }
+      ]
+    },
+    "createdAt": "2024-04-05T02:00:00.000Z",
+    "updatedAt": "2024-04-05T02:00:00.000Z"
+  },
+  {
+    "employeeCode": "CTV021",
+    "fullName": "Vũ Quốc Mai",
+    "taxCode": "9253048693",
+    "dob": "1999-05-10",
+    "idNumber": "079090000021",
+    "email": "vu.quoc.mai21@example.com",
+    "phone": "0910002877",
+    "address": "102 Nguyễn Huệ, Quận Ninh Kiều, Cần Thơ",
+    "checklist": {
+      "submittedIdCard": false,
+      "submittedTaxCommitment": true,
+      "liquidationDate": null,
+      "submittedCV": true,
+      "submittedResidenceInfo": true,
+      "submittedDegree": true,
+      "serviceContracts": [
+        {
+          "startDate": "2022-11-21",
+          "endDate": null
+        }
+      ]
+    },
+    "createdAt": "2022-04-23T02:00:00.000Z",
+    "updatedAt": "2022-04-23T02:00:00.000Z"
+  },
+  {
+    "employeeCode": "CTV022",
+    "fullName": "Nguyễn Văn An",
+    "taxCode": "9003403377",
+    "dob": "1993-08-07",
+    "idNumber": "079090000022",
+    "email": "nguyen.van.an22@example.com",
+    "phone": "0910003014",
+    "address": "139 Nguyễn Trãi, Quận 1, TP. Hồ Chí Minh",
+    "checklist": {
+      "submittedIdCard": false,
+      "submittedTaxCommitment": false,
+      "liquidationDate": null,
+      "submittedCV": true,
+      "submittedResidenceInfo": true,
+      "submittedDegree": true,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ]
+    },
+    "createdAt": "2024-08-27T02:00:00.000Z",
+    "updatedAt": "2024-08-27T02:00:00.000Z"
+  },
+  {
+    "employeeCode": "CTV023",
+    "fullName": "Ngô Xuân Khánh",
+    "taxCode": "8001802163",
+    "dob": "1995-01-22",
+    "idNumber": "079090000023",
+    "email": "ngo.xuan.khanh23@example.com",
+    "phone": "0910003151",
+    "address": "149 Lê Lợi, Quận Hải Châu, Đà Nẵng",
+    "checklist": {
+      "submittedIdCard": false,
+      "submittedTaxCommitment": true,
+      "liquidationDate": null,
+      "submittedCV": true,
+      "submittedResidenceInfo": false,
+      "submittedDegree": false,
+      "serviceContracts": [
+        {
+          "startDate": "2024-03-11",
+          "endDate": null
+        }
+      ]
+    },
+    "createdAt": "2024-02-27T02:00:00.000Z",
+    "updatedAt": "2024-02-27T02:00:00.000Z"
+  },
+  {
+    "employeeCode": "CTV024",
+    "fullName": "Võ Anh Em",
+    "taxCode": "8340242797",
+    "dob": "1989-12-04",
+    "idNumber": "079090000024",
+    "email": "vo.anh.em24@example.com",
+    "phone": "0910003288",
+    "address": "180 Điện Biên Phủ, Quận Bình Thạnh, TP. Hồ Chí Minh",
+    "checklist": {
+      "submittedIdCard": false,
+      "submittedTaxCommitment": true,
+      "liquidationDate": "2025-09-08",
+      "submittedCV": true,
+      "submittedResidenceInfo": true,
+      "submittedDegree": false,
+      "serviceContracts": [
+        {
+          "startDate": "2023-09-24",
+          "endDate": "2025-02-12"
+        }
+      ]
+    },
+    "createdAt": "2024-08-01T02:00:00.000Z",
+    "updatedAt": "2024-08-01T02:00:00.000Z"
+  },
+  {
+    "employeeCode": "CTV025",
+    "fullName": "Ngô Ngọc Dung",
+    "taxCode": "9550872337",
+    "dob": "1998-09-10",
+    "idNumber": "079090000025",
+    "email": "ngo.ngoc.dung25@example.com",
+    "phone": "0910003425",
+    "address": "123 Lý Thường Kiệt, TP. Vinh, Nghệ An",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": true,
+      "liquidationDate": null,
+      "submittedCV": true,
+      "submittedResidenceInfo": true,
+      "submittedDegree": true,
+      "serviceContracts": [
+        {
+          "startDate": "2022-11-14",
+          "endDate": null
+        }
+      ]
+    },
+    "createdAt": "2022-12-07T02:00:00.000Z",
+    "updatedAt": "2022-12-07T02:00:00.000Z"
+  },
+  {
+    "employeeCode": "CTV026",
+    "fullName": "Ngô Anh Trang",
+    "taxCode": "9705192610",
+    "dob": "1988-10-08",
+    "idNumber": "079090000026",
+    "email": "ngo.anh.trang26@example.com",
+    "phone": "0910003562",
+    "address": "131 Lý Thường Kiệt, TP. Vinh, Nghệ An",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": true,
+      "liquidationDate": null,
+      "submittedCV": true,
+      "submittedResidenceInfo": true,
+      "submittedDegree": false,
+      "serviceContracts": [
+        {
+          "startDate": "2023-09-11",
+          "endDate": null
+        }
+      ]
+    },
+    "createdAt": "2023-03-24T02:00:00.000Z",
+    "updatedAt": "2023-03-24T02:00:00.000Z"
+  },
+  {
+    "employeeCode": "CTV027",
+    "fullName": "Phan Thị Phúc",
+    "taxCode": "9669574762",
+    "dob": "2000-10-03",
+    "idNumber": "079090000027",
+    "email": "phan.thi.phuc27@example.com",
+    "phone": "0910003699",
+    "address": "136 Lê Lợi, Quận Hải Châu, Đà Nẵng",
+    "checklist": {
+      "submittedIdCard": false,
+      "submittedTaxCommitment": true,
+      "liquidationDate": null,
+      "submittedCV": true,
+      "submittedResidenceInfo": true,
+      "submittedDegree": false,
+      "serviceContracts": [
+        {
+          "startDate": "2022-07-20",
+          "endDate": null
+        }
+      ]
+    },
+    "createdAt": "2023-04-15T02:00:00.000Z",
+    "updatedAt": "2023-04-15T02:00:00.000Z"
+  },
+  {
+    "employeeCode": "CTV028",
+    "fullName": "Hoàng Xuân Phong",
+    "taxCode": "8967942680",
+    "dob": "1986-05-28",
+    "idNumber": "079090000028",
+    "email": "hoang.xuan.phong28@example.com",
+    "phone": "0910003836",
+    "address": "147 Hai Bà Trưng, Quận Hoàn Kiếm, Hà Nội",
+    "checklist": {
+      "submittedIdCard": false,
+      "submittedTaxCommitment": true,
+      "liquidationDate": "2025-12-16",
+      "submittedCV": false,
+      "submittedResidenceInfo": true,
+      "submittedDegree": true,
+      "serviceContracts": [
+        {
+          "startDate": "2023-10-27",
+          "endDate": "2025-07-18"
+        }
+      ]
+    },
+    "createdAt": "2023-08-07T02:00:00.000Z",
+    "updatedAt": "2023-08-07T02:00:00.000Z"
+  },
+  {
+    "employeeCode": "CTV029",
+    "fullName": "Ngô Xuân Sơn",
+    "taxCode": "8868056765",
+    "dob": "1988-08-11",
+    "idNumber": "079090000029",
+    "email": "ngo.xuan.son29@example.com",
+    "phone": "0910003973",
+    "address": "80 Lý Thường Kiệt, TP. Vinh, Nghệ An",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": true,
+      "liquidationDate": null,
+      "submittedCV": false,
+      "submittedResidenceInfo": true,
+      "submittedDegree": true,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ]
+    },
+    "createdAt": "2023-01-17T02:00:00.000Z",
+    "updatedAt": "2023-01-17T02:00:00.000Z"
+  },
+  {
+    "employeeCode": "CTV030",
+    "fullName": "Đặng Quốc Uyên",
+    "taxCode": "8898847189",
+    "dob": "1997-09-24",
+    "idNumber": "079090000030",
+    "email": "dang.quoc.uyen30@example.com",
+    "phone": "0910004110",
+    "address": "77 Trần Phú, TP. Nha Trang, Khánh Hòa",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "liquidationDate": "2025-05-02",
+      "submittedCV": true,
+      "submittedResidenceInfo": false,
+      "submittedDegree": true,
+      "serviceContracts": [
+        {
+          "startDate": "2022-07-25",
+          "endDate": "2025-08-03"
+        }
+      ]
+    },
+    "createdAt": "2022-09-18T02:00:00.000Z",
+    "updatedAt": "2022-09-18T02:00:00.000Z"
+  }
+]
