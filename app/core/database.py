@@ -1,8 +1,8 @@
-import logging
 from motor.motor_asyncio import AsyncIOMotorClient
 from app.core.config import settings
+from app.core.logging import get_logger
 
-logger = logging.getLogger("bmk-ctv-service")
+logger = get_logger(__name__)
 
 class Database:
     client: AsyncIOMotorClient = None

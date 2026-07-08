@@ -12,6 +12,13 @@ class Settings(BaseSettings):
 
     CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
 
+    # Logging
+    LOG_LEVEL: str = "INFO"  # DEBUG, INFO, WARNING, ERROR
+    LOG_FORMAT: str = "text"  # "text" hoặc "json"
+    LOG_FILE: str | None = None  # Nếu có, log cũng được ghi ra file này (rotating)
+    LOG_MAX_BYTES: int = 1_000_000
+    LOG_BACKUP_COUNT: int = 5
+
     # Google Social Login (ID token flow — only GOOGLE_CLIENT_ID is used for verification;
     # GOOGLE_CLIENT_SECRET is stored for completeness in case a server-side auth-code flow is added later)
     GOOGLE_CLIENT_ID: str = ""

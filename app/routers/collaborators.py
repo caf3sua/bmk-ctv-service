@@ -1,22 +1,35 @@
 import os
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from io import BytesIO
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from fastapi.responses import FileResponse, StreamingResponse
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
+from openpyxl.utils.datetime import from_excel
 from typing import List
+from app.core.activity_log import record_activity
 from app.core.database import get_db
+from app.core.logging import get_logger
 from app.core.security import get_current_user
 from app.models.collaborator import CollaboratorCreate, CollaboratorUpdate, CollaboratorResponse
 
 router = APIRouter(prefix="/api/collaborators", tags=["Collaborators"])
+logger = get_logger(__name__)
 
 COLLECTION = "bmk_ctv_collaborators"
 
 SERVICE_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 TEMPLATE_PATH = os.path.join(SERVICE_ROOT, "templates", "collaborator_checklist_template.xlsx")
+
+# Template có 3 dòng tiêu đề (row 2-4, do merge cells) rồi mới tới dữ liệu (row 5 trở đi).
+HEADER_START_ROW = 2
+DATA_START_ROW = 5
+
+EMPLOYEE_CODE_LABEL = "Mã nhân viên"
+START_DATE_LABEL = "Ngày bắt đầu"
+END_DATE_LABEL = "Ngày kết thúc"
+LIQUIDATION_DATE_LABEL = "Biên bản thanh lí"
 
 # (Tên cột trong file Excel, tên field boolean tương ứng trong checklist)
 CHECKLIST_COLUMNS = [
@@ -27,13 +40,56 @@ CHECKLIST_COLUMNS = [
     ("Bằng cấp", "submittedDegree"),
 ]
 
+# (Tên cột trong file Excel, tên field text tương ứng ở hồ sơ CTV) - dùng khi cần tạo mới CTV từ file import
+PROFILE_TEXT_COLUMNS = [
+    ("Họ tên", "fullName"),
+    ("Mã số thuế", "taxCode"),
+    ("Số CCCD", "idNumber"),
+    ("Email", "email"),
+    ("Số điện thoại", "phone"),
+    ("Địa chỉ", "address"),
+]
+DOB_LABEL = "Ngày sinh"
+
+DATE_TEXT_FORMATS = ["%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d", "%Y/%m/%d", "%d/%m/%y", "%d-%m-%y"]
+
+_UNSET = object()
+
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+def _parse_excel_date(value) -> str | None:
+    """Chuyển giá trị 1 ô Excel (kiểu Date hoặc Text) thành chuỗi ISO 'YYYY-MM-DD'."""
+    if isinstance(value, datetime):
+        return value.date().isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    if isinstance(value, (int, float)):
+        return from_excel(value).date().isoformat()
+
+    text = str(value).strip()
+    if not text or text in ("-", "—"):
+        return None
+    for fmt in DATE_TEXT_FORMATS:
+        try:
+            return datetime.strptime(text, fmt).date().isoformat()
+        except ValueError:
+            continue
+    raise ValueError(f"không nhận dạng được định dạng ngày '{text}'")
+
+def _cell_str(row, idx) -> str:
+    if idx is None or idx >= len(row):
+        return ""
+    value = row[idx]
+    return "" if value is None else str(value).strip()
 
 def _to_response(doc: dict) -> dict:
     doc = dict(doc)
     doc["employeeCode"] = doc["_id"]
     return doc
+
+def _actor_name(current_user: dict) -> str:
+    return current_user.get("name") or current_user.get("username", "")
 
 @router.get("", response_model=List[CollaboratorResponse])
 async def list_collaborators(db=Depends(get_db), current_user: dict = Depends(get_current_user)):
@@ -58,7 +114,13 @@ async def download_import_template(current_user: dict = Depends(get_current_user
 @router.get("/export")
 async def export_collaborators(db=Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Export all collaborators' checklist status to an Excel file using the template."""
+    full_name = _actor_name(current_user)
     if not os.path.exists(TEMPLATE_PATH):
+        await record_activity(
+            db, action="export_collaborators", result="fail", full_name=full_name,
+            username=current_user.get("username", ""),
+            message=f"{full_name} đã xuất thất bại danh sách cộng tác viên",
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Không tìm thấy file template mẫu"
@@ -141,6 +203,13 @@ async def export_collaborators(db=Depends(get_db), current_user: dict = Depends(
     wb.save(buffer)
     buffer.seek(0)
 
+    exported_count = stt - 1
+    await record_activity(
+        db, action="export_collaborators", result="success", full_name=full_name,
+        username=current_user.get("username", ""),
+        message=f"{full_name} đã xuất thành công {exported_count} cộng tác viên",
+    )
+
     return StreamingResponse(
         buffer,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -151,38 +220,61 @@ async def export_collaborators(db=Depends(get_db), current_user: dict = Depends(
 async def import_collaborators(
     file: UploadFile = File(...), db=Depends(get_db), current_user: dict = Depends(get_current_user)
 ):
-    """Bulk-update collaborators' checklist status from an uploaded Excel file (see /template)."""
+    """Bulk-create/update collaborators from an uploaded Excel file (see /template)."""
+    username = current_user.get("username", "unknown")
+    full_name = _actor_name(current_user)
+    logger.info(f"Bắt đầu import '{file.filename}' bởi user='{username}'")
+
+    async def _fail(reason: str, detail: str):
+        logger.warning(f"Import thất bại ({reason}): filename='{file.filename}'")
+        await record_activity(
+            db, action="import_collaborators", result="fail", full_name=full_name, username=username,
+            message=f"{full_name} đã nhập thất bại 0 cộng tác viên",
+        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
+
     if not file.filename or not file.filename.lower().endswith((".xlsx", ".xlsm")):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Chỉ hỗ trợ file Excel (.xlsx)")
+        await _fail("sai định dạng file", "Chỉ hỗ trợ file Excel (.xlsx)")
 
     content = await file.read()
     try:
         wb = load_workbook(BytesIO(content), data_only=True)
     except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Không đọc được file Excel, vui lòng dùng đúng file mẫu"
-        )
+        await _fail("không đọc được file", "Không đọc được file Excel, vui lòng dùng đúng file mẫu")
 
     ws = wb.active
     rows = list(ws.iter_rows(values_only=True))
-    if not rows:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File không có dữ liệu")
+    if len(rows) < DATA_START_ROW:
+        await _fail("file không có dữ liệu", "File không có dữ liệu")
 
-    header = [str(cell).strip() if cell is not None else "" for cell in rows[0]]
-    if "Mã nhân viên" not in header:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Không tìm thấy cột 'Mã nhân viên' trong file, vui lòng dùng đúng file mẫu"
+    # Tiêu đề nằm rải trên nhiều dòng (row 2-4) do các ô bị merge, gộp lại thành 1 header logic.
+    # Duyệt từ dòng header trong cùng (cụ thể nhất) ra ngoài, vì các ô merge dọc
+    # (vd cột "Ngày bắt đầu") có tiêu đề nhóm cha ở dòng trên và nhãn cột thật ở dòng dưới.
+    header_row_slices = rows[HEADER_START_ROW - 1 : DATA_START_ROW - 1]
+    header = [
+        next((str(cell).strip() for cell in reversed(col_cells) if cell not in (None, "")), "")
+        for col_cells in zip(*header_row_slices)
+    ]
+
+    if EMPLOYEE_CODE_LABEL not in header:
+        await _fail(
+            "không tìm thấy cột 'Mã nhân viên'",
+            "Không tìm thấy cột 'Mã nhân viên' trong file, vui lòng dùng đúng file mẫu",
         )
-    code_idx = header.index("Mã nhân viên")
+    code_idx = header.index(EMPLOYEE_CODE_LABEL)
+    start_date_idx = header.index(START_DATE_LABEL) if START_DATE_LABEL in header else None
+    end_date_idx = header.index(END_DATE_LABEL) if END_DATE_LABEL in header else None
+    liquidation_idx = header.index(LIQUIDATION_DATE_LABEL) if LIQUIDATION_DATE_LABEL in header else None
 
     column_indices = {field: header.index(label) for label, field in CHECKLIST_COLUMNS if label in header}
+    profile_indices = {field: header.index(label) for label, field in PROFILE_TEXT_COLUMNS if label in header}
+    dob_idx = header.index(DOB_LABEL) if DOB_LABEL in header else None
 
     updated: List[str] = []
-    not_found: List[str] = []
+    created: List[str] = []
+    date_errors: List[str] = []
 
-    for row in rows[1:]:
+    for row in rows[DATA_START_ROW - 1 :]:
         if row is None or all(cell in (None, "") for cell in row):
             continue
 
@@ -192,24 +284,94 @@ async def import_collaborators(
             continue
 
         existing = await db[COLLECTION].find_one({"_id": employee_code})
-        if not existing:
-            not_found.append(employee_code)
-            continue
 
-        updates = {}
+        checklist_values = {}
         for field, col_idx in column_indices.items():
             value = row[col_idx] if col_idx < len(row) else None
-            updates[f"checklist.{field}"] = value is not None and str(value).strip() != ""
-        updates["updatedAt"] = _now()
+            checklist_values[field] = value is not None and str(value).strip() != ""
 
-        await db[COLLECTION].update_one({"_id": employee_code}, {"$set": updates})
-        updated.append(employee_code)
+        def parse_cell_date(idx):
+            """Đọc & parse ngày ở cột idx; trả _UNSET nếu cột không tồn tại hoặc parse lỗi (giữ nguyên giá trị cũ)."""
+            if idx is None or idx >= len(row):
+                return _UNSET
+            raw = row[idx]
+            if raw is None or (isinstance(raw, str) and not raw.strip()):
+                return None
+            try:
+                return _parse_excel_date(raw)
+            except ValueError as exc:
+                date_errors.append(f"CTV '{employee_code}', cột '{header[idx]}': {exc}")
+                return _UNSET
+
+        start_val = parse_cell_date(start_date_idx)
+        end_val = parse_cell_date(end_date_idx)
+        liquidation_val = parse_cell_date(liquidation_idx)
+
+        if existing:
+            updates = {f"checklist.{field}": val for field, val in checklist_values.items()}
+
+            if start_date_idx is not None or end_date_idx is not None:
+                contracts = existing.get("checklist", {}).get("serviceContracts") or []
+                last_contract = dict(contracts[-1]) if contracts and isinstance(contracts[-1], dict) else {}
+                if start_val is not _UNSET:
+                    last_contract["startDate"] = start_val
+                if end_val is not _UNSET:
+                    last_contract["endDate"] = end_val
+                updates["checklist.serviceContracts"] = (contracts[:-1] if contracts else []) + [last_contract]
+
+            if liquidation_val is not _UNSET:
+                updates["checklist.liquidationDate"] = liquidation_val
+
+            updates["updatedAt"] = _now()
+            await db[COLLECTION].update_one({"_id": employee_code}, {"$set": updates})
+            updated.append(employee_code)
+        else:
+            now = _now()
+            dob_val = parse_cell_date(dob_idx)
+            new_doc = {
+                "_id": employee_code,
+                "employeeCode": employee_code,
+                "fullName": _cell_str(row, profile_indices.get("fullName")),
+                "taxCode": _cell_str(row, profile_indices.get("taxCode")),
+                "dob": None if dob_val is _UNSET else dob_val,
+                "idNumber": _cell_str(row, profile_indices.get("idNumber")),
+                "email": _cell_str(row, profile_indices.get("email")),
+                "phone": _cell_str(row, profile_indices.get("phone")),
+                "address": _cell_str(row, profile_indices.get("address")),
+                "checklist": {
+                    **checklist_values,
+                    "serviceContracts": [{
+                        "startDate": None if start_val is _UNSET else start_val,
+                        "endDate": None if end_val is _UNSET else end_val,
+                    }],
+                    "liquidationDate": None if liquidation_val is _UNSET else liquidation_val,
+                },
+                "createdAt": now,
+                "updatedAt": now,
+            }
+            await db[COLLECTION].insert_one(new_doc)
+            created.append(employee_code)
+
+    total_processed = len(created) + len(updated)
+    logger.info(
+        f"Import '{file.filename}' hoàn tất bởi user='{username}': "
+        f"tạo mới={len(created)}, cập nhật={len(updated)}, lỗi ngày tháng={len(date_errors)}"
+    )
+    if date_errors:
+        logger.warning(f"Import '{file.filename}' có {len(date_errors)} lỗi định dạng ngày: {date_errors}")
+
+    await record_activity(
+        db, action="import_collaborators", result="success", full_name=full_name, username=username,
+        message=f"{full_name} đã nhập thành công {total_processed} cộng tác viên",
+    )
 
     return {
         "updatedCount": len(updated),
         "updated": updated,
-        "notFoundCount": len(not_found),
-        "notFound": not_found,
+        "createdCount": len(created),
+        "created": created,
+        "dateErrorCount": len(date_errors),
+        "dateErrors": date_errors,
     }
 
 @router.get("/{employee_code}", response_model=CollaboratorResponse)
@@ -226,12 +388,18 @@ async def get_collaborator(employee_code: str, db=Depends(get_db), current_user:
 @router.post("", response_model=CollaboratorResponse, status_code=status.HTTP_201_CREATED)
 async def create_collaborator(payload: CollaboratorCreate, db=Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Create a new collaborator profile."""
+    full_name = _actor_name(current_user)
     employee_code = payload.employeeCode.strip()
     if not employee_code:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Mã nhân viên là bắt buộc")
 
     existing = await db[COLLECTION].find_one({"_id": employee_code})
     if existing:
+        await record_activity(
+            db, action="create_collaborator", result="fail", full_name=full_name,
+            username=current_user.get("username", ""),
+            message=f"{full_name} tạo thất bại hồ sơ cho cộng tác viên mã {employee_code}",
+        )
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail=f'Mã nhân viên "{employee_code}" đã tồn tại'
@@ -244,13 +412,25 @@ async def create_collaborator(payload: CollaboratorCreate, db=Depends(get_db), c
     doc["createdAt"] = now
     doc["updatedAt"] = now
     await db[COLLECTION].insert_one(doc)
+    await record_activity(
+        db, action="create_collaborator", result="success", full_name=full_name,
+        username=current_user.get("username", ""),
+        message=f"{full_name} tạo thành công hồ sơ cho cộng tác viên mã {employee_code}",
+    )
     return _to_response(doc)
 
 @router.put("/{employee_code}", response_model=CollaboratorResponse)
 async def update_collaborator(employee_code: str, payload: CollaboratorUpdate, db=Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Update an existing collaborator profile."""
+    full_name = _actor_name(current_user)
+    username = current_user.get("username", "")
+
     existing = await db[COLLECTION].find_one({"_id": employee_code})
     if not existing:
+        await record_activity(
+            db, action="update_collaborator", result="fail", full_name=full_name, username=username,
+            message=f"{full_name} cập nhật thất bại hồ sơ cho cộng tác viên mã {employee_code}",
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f'Không tìm thấy cộng tác viên "{employee_code}"'
@@ -260,6 +440,10 @@ async def update_collaborator(employee_code: str, payload: CollaboratorUpdate, d
     if new_code != employee_code:
         conflict = await db[COLLECTION].find_one({"_id": new_code})
         if conflict:
+            await record_activity(
+                db, action="update_collaborator", result="fail", full_name=full_name, username=username,
+                message=f"{full_name} cập nhật thất bại hồ sơ cho cộng tác viên mã {employee_code}",
+            )
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f'Mã nhân viên "{new_code}" đã tồn tại'
@@ -274,15 +458,31 @@ async def update_collaborator(employee_code: str, payload: CollaboratorUpdate, d
     if new_code != employee_code:
         await db[COLLECTION].delete_one({"_id": employee_code})
     await db[COLLECTION].replace_one({"_id": new_code}, doc, upsert=True)
+    await record_activity(
+        db, action="update_collaborator", result="success", full_name=full_name, username=username,
+        message=f"{full_name} cập nhật thành công hồ sơ cho cộng tác viên mã {new_code}",
+    )
     return _to_response(doc)
 
 @router.delete("/{employee_code}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_collaborator(employee_code: str, db=Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Delete a collaborator profile by employee code."""
+    full_name = _actor_name(current_user)
+    username = current_user.get("username", "")
+
     result = await db[COLLECTION].delete_one({"_id": employee_code})
     if result.deleted_count == 0:
+        await record_activity(
+            db, action="delete_collaborator", result="fail", full_name=full_name, username=username,
+            message=f"{full_name} xóa thất bại hồ sơ cộng tác viên mã {employee_code}",
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f'Không tìm thấy cộng tác viên "{employee_code}"'
         )
+
+    await record_activity(
+        db, action="delete_collaborator", result="success", full_name=full_name, username=username,
+        message=f"{full_name} xóa thành công hồ sơ cộng tác viên mã {employee_code}",
+    )
     return None
