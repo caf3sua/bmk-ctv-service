@@ -24,6 +24,14 @@ class Settings(BaseSettings):
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
 
+    # S3 MinIO Configurations
+    S3_ACCESS_KEY_ID: str = ""
+    S3_ACCESS_SECRET: str = ""
+    S3_BUCKET: str = "intranet"
+    S3_ENDPOINT: str = ""
+    S3_REGION: str = "hanoi"
+    S3_VERIFY: bool = False
+
     model_config = SettingsConfigDict(
         env_file=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env"),
         env_file_encoding="utf-8",

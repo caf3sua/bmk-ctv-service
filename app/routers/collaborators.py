@@ -13,6 +13,9 @@ from app.core.database import get_db
 from app.core.logging import get_logger
 from app.core.security import get_current_user
 from app.models.collaborator import CollaboratorCreate, CollaboratorUpdate, CollaboratorResponse
+from app.core.s3 import upload_to_s3
+from app.core.config import settings
+
 
 router = APIRouter(prefix="/api/collaborators", tags=["Collaborators"])
 logger = get_logger(__name__)
@@ -220,159 +223,246 @@ async def export_collaborators(db=Depends(get_db), current_user: dict = Depends(
 async def import_collaborators(
     file: UploadFile = File(...), db=Depends(get_db), current_user: dict = Depends(get_current_user)
 ):
-    """Bulk-create/update collaborators from an uploaded Excel file (see /template)."""
+    """Bulk-create/update collaborators from an uploaded Excel file (see /template) and log to S3/MongoDB history."""
     username = current_user.get("username", "unknown")
     full_name = _actor_name(current_user)
     logger.info(f"Bắt đầu import '{file.filename}' bởi user='{username}'")
 
-    async def _fail(reason: str, detail: str):
-        logger.warning(f"Import thất bại ({reason}): filename='{file.filename}'")
-        await record_activity(
-            db, action="import_collaborators", result="fail", full_name=full_name, username=username,
-            message=f"{full_name} đã nhập thất bại 0 cộng tác viên",
-        )
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=detail)
-
-    if not file.filename or not file.filename.lower().endswith((".xlsx", ".xlsm")):
-        await _fail("sai định dạng file", "Chỉ hỗ trợ file Excel (.xlsx)")
+    # Generate unique S3 Key and read contents
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    s3_key = f"excel/{timestamp}_{file.filename}"
+    s3_bucket = settings.S3_BUCKET
 
     content = await file.read()
+
+    # 1. Upload to S3
     try:
-        wb = load_workbook(BytesIO(content), data_only=True)
-    except Exception:
-        await _fail("không đọc được file", "Không đọc được file Excel, vui lòng dùng đúng file mẫu")
-
-    ws = wb.active
-    rows = list(ws.iter_rows(values_only=True))
-    if len(rows) < DATA_START_ROW:
-        await _fail("file không có dữ liệu", "File không có dữ liệu")
-
-    # Tiêu đề nằm rải trên nhiều dòng (row 2-4) do các ô bị merge, gộp lại thành 1 header logic.
-    # Duyệt từ dòng header trong cùng (cụ thể nhất) ra ngoài, vì các ô merge dọc
-    # (vd cột "Ngày bắt đầu") có tiêu đề nhóm cha ở dòng trên và nhãn cột thật ở dòng dưới.
-    header_row_slices = rows[HEADER_START_ROW - 1 : DATA_START_ROW - 1]
-    header = [
-        next((str(cell).strip() for cell in reversed(col_cells) if cell not in (None, "")), "")
-        for col_cells in zip(*header_row_slices)
-    ]
-
-    if EMPLOYEE_CODE_LABEL not in header:
-        await _fail(
-            "không tìm thấy cột 'Mã nhân viên'",
-            "Không tìm thấy cột 'Mã nhân viên' trong file, vui lòng dùng đúng file mẫu",
+        upload_to_s3(content, s3_key)
+    except Exception as s3_err:
+        error_msg = f"Lỗi upload S3: {str(s3_err)}"
+        await db["bmk_ctv_upload_history"].insert_one({
+            "filename": file.filename,
+            "s3Key": s3_key,
+            "s3Bucket": s3_bucket,
+            "uploadedBy": full_name,
+            "username": username,
+            "rowsProcessed": 0,
+            "createdCount": 0,
+            "updatedCount": 0,
+            "status": "fail",
+            "message": error_msg,
+            "createdAt": _now()
+        })
+        await record_activity(
+            db, action="import_collaborators", result="fail", full_name=full_name, username=username,
+            message=f"{full_name} đã nhập thất bại 0 cộng tác viên ({error_msg})",
         )
-    code_idx = header.index(EMPLOYEE_CODE_LABEL)
-    start_date_idx = header.index(START_DATE_LABEL) if START_DATE_LABEL in header else None
-    end_date_idx = header.index(END_DATE_LABEL) if END_DATE_LABEL in header else None
-    liquidation_idx = header.index(LIQUIDATION_DATE_LABEL) if LIQUIDATION_DATE_LABEL in header else None
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Không thể lưu trữ file lên S3: {str(s3_err)}"
+        )
 
-    column_indices = {field: header.index(label) for label, field in CHECKLIST_COLUMNS if label in header}
-    profile_indices = {field: header.index(label) for label, field in PROFILE_TEXT_COLUMNS if label in header}
-    dob_idx = header.index(DOB_LABEL) if DOB_LABEL in header else None
+    # 2. Process logic
+    try:
+        if not file.filename or not file.filename.lower().endswith((".xlsx", ".xlsm")):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Chỉ hỗ trợ file Excel (.xlsx)")
 
-    updated: List[str] = []
-    created: List[str] = []
-    date_errors: List[str] = []
+        try:
+            wb = load_workbook(BytesIO(content), data_only=True)
+        except Exception:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Không đọc được file Excel, vui lòng dùng đúng file mẫu")
 
-    for row in rows[DATA_START_ROW - 1 :]:
-        if row is None or all(cell in (None, "") for cell in row):
-            continue
+        ws = wb.active
+        rows = list(ws.iter_rows(values_only=True))
+        if len(rows) < DATA_START_ROW:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="File không có dữ liệu")
 
-        raw_code = row[code_idx] if code_idx < len(row) else None
-        employee_code = str(raw_code).strip() if raw_code is not None else ""
-        if not employee_code:
-            continue
+        header_row_slices = rows[HEADER_START_ROW - 1 : DATA_START_ROW - 1]
+        header = [
+            next((str(cell).strip() for cell in reversed(col_cells) if cell not in (None, "")), "")
+            for col_cells in zip(*header_row_slices)
+        ]
 
-        existing = await db[COLLECTION].find_one({"_id": employee_code})
+        if EMPLOYEE_CODE_LABEL not in header:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Không tìm thấy cột 'Mã nhân viên' trong file, vui lòng dùng đúng file mẫu",
+            )
+        code_idx = header.index(EMPLOYEE_CODE_LABEL)
+        start_date_idx = header.index(START_DATE_LABEL) if START_DATE_LABEL in header else None
+        end_date_idx = header.index(END_DATE_LABEL) if END_DATE_LABEL in header else None
+        liquidation_idx = header.index(LIQUIDATION_DATE_LABEL) if LIQUIDATION_DATE_LABEL in header else None
 
-        checklist_values = {}
-        for field, col_idx in column_indices.items():
-            value = row[col_idx] if col_idx < len(row) else None
-            checklist_values[field] = value is not None and str(value).strip() != ""
+        column_indices = {field: header.index(label) for label, field in CHECKLIST_COLUMNS if label in header}
+        profile_indices = {field: header.index(label) for label, field in PROFILE_TEXT_COLUMNS if label in header}
+        dob_idx = header.index(DOB_LABEL) if DOB_LABEL in header else None
 
-        def parse_cell_date(idx):
-            """Đọc & parse ngày ở cột idx; trả _UNSET nếu cột không tồn tại hoặc parse lỗi (giữ nguyên giá trị cũ)."""
-            if idx is None or idx >= len(row):
-                return _UNSET
-            raw = row[idx]
-            if raw is None or (isinstance(raw, str) and not raw.strip()):
-                return None
-            try:
-                return _parse_excel_date(raw)
-            except ValueError as exc:
-                date_errors.append(f"CTV '{employee_code}', cột '{header[idx]}': {exc}")
-                return _UNSET
+        updated: List[str] = []
+        created: List[str] = []
+        date_errors: List[str] = []
 
-        start_val = parse_cell_date(start_date_idx)
-        end_val = parse_cell_date(end_date_idx)
-        liquidation_val = parse_cell_date(liquidation_idx)
+        for current_row_num, row in enumerate(rows[DATA_START_ROW - 1 :], start=DATA_START_ROW):
+            if row is None or all(cell in (None, "") for cell in row):
+                continue
 
-        if existing:
-            updates = {f"checklist.{field}": val for field, val in checklist_values.items()}
+            raw_code = row[code_idx] if code_idx < len(row) else None
+            employee_code = str(raw_code).strip() if raw_code is not None else ""
+            if not employee_code:
+                if not all(cell in (None, "") for cell in row):
+                    date_errors.append(f"Dòng {current_row_num}: Thiếu Mã nhân viên")
+                continue
 
-            if start_date_idx is not None or end_date_idx is not None:
-                contracts = existing.get("checklist", {}).get("serviceContracts") or []
-                last_contract = dict(contracts[-1]) if contracts and isinstance(contracts[-1], dict) else {}
-                if start_val is not _UNSET:
-                    last_contract["startDate"] = start_val
-                if end_val is not _UNSET:
-                    last_contract["endDate"] = end_val
-                updates["checklist.serviceContracts"] = (contracts[:-1] if contracts else []) + [last_contract]
+            existing = await db[COLLECTION].find_one({"_id": employee_code})
 
-            if liquidation_val is not _UNSET:
-                updates["checklist.liquidationDate"] = liquidation_val
+            checklist_values = {}
+            for field, col_idx in column_indices.items():
+                value = row[col_idx] if col_idx < len(row) else None
+                checklist_values[field] = value is not None and str(value).strip() != ""
 
-            updates["updatedAt"] = _now()
-            await db[COLLECTION].update_one({"_id": employee_code}, {"$set": updates})
-            updated.append(employee_code)
-        else:
-            now = _now()
-            dob_val = parse_cell_date(dob_idx)
-            new_doc = {
-                "_id": employee_code,
-                "employeeCode": employee_code,
-                "fullName": _cell_str(row, profile_indices.get("fullName")),
-                "taxCode": _cell_str(row, profile_indices.get("taxCode")),
-                "dob": None if dob_val is _UNSET else dob_val,
-                "idNumber": _cell_str(row, profile_indices.get("idNumber")),
-                "email": _cell_str(row, profile_indices.get("email")),
-                "phone": _cell_str(row, profile_indices.get("phone")),
-                "address": _cell_str(row, profile_indices.get("address")),
-                "checklist": {
-                    **checklist_values,
-                    "serviceContracts": [{
-                        "startDate": None if start_val is _UNSET else start_val,
-                        "endDate": None if end_val is _UNSET else end_val,
-                    }],
-                    "liquidationDate": None if liquidation_val is _UNSET else liquidation_val,
-                },
-                "createdAt": now,
-                "updatedAt": now,
-            }
-            await db[COLLECTION].insert_one(new_doc)
-            created.append(employee_code)
+            def parse_cell_date(idx):
+                if idx is None or idx >= len(row):
+                    return _UNSET
+                raw = row[idx]
+                if raw is None or (isinstance(raw, str) and not raw.strip()):
+                    return None
+                try:
+                    return _parse_excel_date(raw)
+                except ValueError as exc:
+                    date_errors.append(f"Dòng {current_row_num} (Mã NV: {employee_code}), cột '{header[idx]}': {exc}")
+                    return _UNSET
 
-    total_processed = len(created) + len(updated)
-    logger.info(
-        f"Import '{file.filename}' hoàn tất bởi user='{username}': "
-        f"tạo mới={len(created)}, cập nhật={len(updated)}, lỗi ngày tháng={len(date_errors)}"
-    )
-    if date_errors:
-        logger.warning(f"Import '{file.filename}' có {len(date_errors)} lỗi định dạng ngày: {date_errors}")
+            start_val = parse_cell_date(start_date_idx)
+            end_val = parse_cell_date(end_date_idx)
+            liquidation_val = parse_cell_date(liquidation_idx)
 
-    await record_activity(
-        db, action="import_collaborators", result="success", full_name=full_name, username=username,
-        message=f"{full_name} đã nhập thành công {total_processed} cộng tác viên",
-    )
+            if existing:
+                updates = {f"checklist.{field}": val for field, val in checklist_values.items()}
 
-    return {
-        "updatedCount": len(updated),
-        "updated": updated,
-        "createdCount": len(created),
-        "created": created,
-        "dateErrorCount": len(date_errors),
-        "dateErrors": date_errors,
-    }
+                if start_date_idx is not None or end_date_idx is not None:
+                    contracts = existing.get("checklist", {}).get("serviceContracts") or []
+                    last_contract = dict(contracts[-1]) if contracts and isinstance(contracts[-1], dict) else {}
+                    if start_val is not _UNSET:
+                        last_contract["startDate"] = start_val
+                    if end_val is not _UNSET:
+                        last_contract["endDate"] = end_val
+                    updates["checklist.serviceContracts"] = (contracts[:-1] if contracts else []) + [last_contract]
+
+                if liquidation_val is not _UNSET:
+                    updates["checklist.liquidationDate"] = liquidation_val
+
+                updates["updatedAt"] = _now()
+                await db[COLLECTION].update_one({"_id": employee_code}, {"$set": updates})
+                updated.append(employee_code)
+            else:
+                now_ts = _now()
+                dob_val = parse_cell_date(dob_idx)
+                new_doc = {
+                    "_id": employee_code,
+                    "employeeCode": employee_code,
+                    "fullName": _cell_str(row, profile_indices.get("fullName")),
+                    "taxCode": _cell_str(row, profile_indices.get("taxCode")),
+                    "dob": None if dob_val is _UNSET else dob_val,
+                    "idNumber": _cell_str(row, profile_indices.get("idNumber")),
+                    "email": _cell_str(row, profile_indices.get("email")),
+                    "phone": _cell_str(row, profile_indices.get("phone")),
+                    "address": _cell_str(row, profile_indices.get("address")),
+                    "checklist": {
+                        **checklist_values,
+                        "serviceContracts": [{
+                            "startDate": None if start_val is _UNSET else start_val,
+                            "endDate": None if end_val is _UNSET else end_val,
+                        }],
+                        "liquidationDate": None if liquidation_val is _UNSET else liquidation_val,
+                    },
+                    "createdAt": now_ts,
+                    "updatedAt": now_ts,
+                }
+                await db[COLLECTION].insert_one(new_doc)
+                created.append(employee_code)
+
+        total_processed = len(created) + len(updated)
+        logger.info(
+            f"Import '{file.filename}' hoàn tất bởi user='{username}': "
+            f"tạo mới={len(created)}, cập nhật={len(updated)}, lỗi ngày tháng={len(date_errors)}"
+        )
+        if date_errors:
+            logger.warning(f"Import '{file.filename}' có {len(date_errors)} lỗi định dạng ngày: {date_errors}")
+
+        success_msg = f"Nhập thành công {total_processed} cộng tác viên (Tạo mới: {len(created)}, Cập nhật: {len(updated)})"
+        if date_errors:
+            success_msg += f". Có {len(date_errors)} lỗi dữ liệu:\n" + "\n".join(f"- {err}" for err in date_errors)
+
+        await record_activity(
+            db, action="import_collaborators", result="success", full_name=full_name, username=username,
+            message=f"{full_name} đã nhập thành công {total_processed} cộng tác viên",
+        )
+
+        # Record success history
+        await db["bmk_ctv_upload_history"].insert_one({
+            "filename": file.filename,
+            "s3Key": s3_key,
+            "s3Bucket": s3_bucket,
+            "uploadedBy": full_name,
+            "username": username,
+            "rowsProcessed": total_processed,
+            "createdCount": len(created),
+            "updatedCount": len(updated),
+            "status": "success",
+            "message": success_msg,
+            "createdAt": _now()
+        })
+
+        return {
+            "updatedCount": len(updated),
+            "updated": updated,
+            "createdCount": len(created),
+            "created": created,
+            "dateErrorCount": len(date_errors),
+            "dateErrors": date_errors,
+        }
+
+    except HTTPException as he:
+        logger.warning(f"Import thất bại (HTTP {he.status_code}): {he.detail}")
+        await db["bmk_ctv_upload_history"].insert_one({
+            "filename": file.filename,
+            "s3Key": s3_key,
+            "s3Bucket": s3_bucket,
+            "uploadedBy": full_name,
+            "username": username,
+            "rowsProcessed": 0,
+            "createdCount": 0,
+            "updatedCount": 0,
+            "status": "fail",
+            "message": he.detail,
+            "createdAt": _now()
+        })
+        await record_activity(
+            db, action="import_collaborators", result="fail", full_name=full_name, username=username,
+            message=f"{full_name} đã nhập thất bại 0 cộng tác viên: {he.detail}",
+        )
+        raise he
+
+    except Exception as exc:
+        error_detail = str(exc)
+        logger.error(f"Import thất bại (Lỗi không xác định): {error_detail}")
+        await db["bmk_ctv_upload_history"].insert_one({
+            "filename": file.filename,
+            "s3Key": s3_key,
+            "s3Bucket": s3_bucket,
+            "uploadedBy": full_name,
+            "username": username,
+            "rowsProcessed": 0,
+            "createdCount": 0,
+            "updatedCount": 0,
+            "status": "fail",
+            "message": f"Lỗi hệ thống: {error_detail}",
+            "createdAt": _now()
+        })
+        await record_activity(
+            db, action="import_collaborators", result="fail", full_name=full_name, username=username,
+            message=f"{full_name} đã nhập thất bại 0 cộng tác viên: {error_detail}",
+        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Không đọc được file hoặc lỗi xử lý dữ liệu: {error_detail}")
 
 @router.get("/{employee_code}", response_model=CollaboratorResponse)
 async def get_collaborator(employee_code: str, db=Depends(get_db), current_user: dict = Depends(get_current_user)):
