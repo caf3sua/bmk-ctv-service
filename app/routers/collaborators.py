@@ -251,7 +251,8 @@ async def import_collaborators(
             "updatedCount": 0,
             "status": "fail",
             "message": error_msg,
-            "createdAt": _now()
+            "createdAt": _now(),
+            "group": "CTV"
         })
         await record_activity(
             db, action="import_collaborators", result="fail", full_name=full_name, username=username,
@@ -409,7 +410,8 @@ async def import_collaborators(
             "updatedCount": len(updated),
             "status": "success",
             "message": success_msg,
-            "createdAt": _now()
+            "createdAt": _now(),
+            "group": "CTV"
         })
 
         return {
@@ -434,7 +436,8 @@ async def import_collaborators(
             "updatedCount": 0,
             "status": "fail",
             "message": he.detail,
-            "createdAt": _now()
+            "createdAt": _now(),
+            "group": "CTV"
         })
         await record_activity(
             db, action="import_collaborators", result="fail", full_name=full_name, username=username,
@@ -456,7 +459,8 @@ async def import_collaborators(
             "updatedCount": 0,
             "status": "fail",
             "message": f"Lỗi hệ thống: {error_detail}",
-            "createdAt": _now()
+            "createdAt": _now(),
+            "group": "CTV"
         })
         await record_activity(
             db, action="import_collaborators", result="fail", full_name=full_name, username=username,

@@ -13,6 +13,7 @@ class UploadHistoryResponse(BaseModel):
     status: str  # "success" | "fail"
     message: str
     createdAt: str
+    group: str = "CTV"
 
     model_config = {
         "json_schema_extra": {

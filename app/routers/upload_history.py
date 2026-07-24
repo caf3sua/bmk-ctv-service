@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
 from typing import List
+from urllib.parse import quote
 from bson import ObjectId
 from app.core.database import get_db
 from app.core.security import get_current_user
@@ -28,6 +29,7 @@ def _to_response(doc: dict) -> dict:
         "status": doc.get("status", ""),
         "message": doc.get("message", ""),
         "createdAt": doc.get("createdAt", ""),
+        "group": doc.get("group", "CTV"),
     }
 
 @router.get("", response_model=List[UploadHistoryResponse])
@@ -70,7 +72,7 @@ async def download_uploaded_file(
             iter_chunks(),
             media_type=response.get("ContentType", "application/octet-stream"),
             headers={
-                "Content-Disposition": f"attachment; filename*=UTF-8''{filename}"
+                "Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"
             }
         )
     except Exception as e:
