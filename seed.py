@@ -47,6 +47,28 @@ users = [
         "hashedPassword": hash_password("123456"),
         "createdAt": _now,
         "updatedAt": _now,
+    },
+    {
+        "_id": "trangvpccpd",
+        "username": "trangvpccpd",
+        "name": "Nguyễn Thị Thu Trang",
+        "email": "thutrangvpccpd@gmail.com",
+        "role": "admin",
+        "active": True,
+        "hashedPassword": "pbkdf2:sha256:600000$f07dafe436ef09078375c98cef8fe54a$41b27df7dca4143680b2eca9a53d01932373ee3b313826906f2b9c56d590fede",
+        "createdAt": "2026-07-26T11:02:25.551592Z",
+        "updatedAt": "2026-07-26T11:02:25.551592Z",
+    },
+    {
+        "_id": "hoainamtin2",
+        "username": "hoainamtin2",
+        "name": "Nguyễn Hoài Nam",
+        "email": "hoainamtin2@gmail.com",
+        "role": "admin",
+        "active": True,
+        "hashedPassword": "pbkdf2:sha256:600000$142f81c3a7887f2c508f51a196d75839$501942367f60a491a59479b5880056b0674b9df1fe40a3170356d41c1882fd73",
+        "createdAt": "2026-07-26T11:02:57.756822Z",
+        "updatedAt": "2026-07-26T11:02:57.756822Z",
     }
 ]
 
@@ -55,19 +77,40 @@ def seed_db():
     client = MongoClient(MONGODB_URI)
     db = client[DB_NAME]
 
-    print("Seeding collaborators...")
-    db["bmk_ctv_collaborators"].delete_many({})
-    db["bmk_ctv_collaborators"].insert_many(collaborators)
-    print(f"Successfully seeded {len(collaborators)} collaborators.")
+    print("Seeding collaborators (using upsert)...")
+    inserted_colls = 0
+    updated_colls = 0
+    for item in collaborators:
+        res = db["bmk_ctv_collaborators"].replace_one(
+            {"_id": item["_id"]},
+            item,
+            upsert=True
+        )
+        if res.matched_count > 0:
+            updated_colls += 1
+        else:
+            inserted_colls += 1
+    print(f"Successfully seeded collaborators: {inserted_colls} inserted, {updated_colls} updated.")
 
-    print("Seeding users...")
-    db["bmk_ctv_users"].drop()
+    print("Seeding users (using upsert)...")
     db["bmk_ctv_users"].create_index("username", unique=True)
     db["bmk_ctv_users"].create_index("email", unique=True)
-    db["bmk_ctv_users"].insert_many(users)
-    print(f"Successfully seeded {len(users)} users.")
+    
+    inserted_users = 0
+    updated_users = 0
+    for u in users:
+        res = db["bmk_ctv_users"].replace_one(
+            {"_id": u["_id"]},
+            u,
+            upsert=True
+        )
+        if res.matched_count > 0:
+            updated_users += 1
+        else:
+            inserted_users += 1
+    print(f"Successfully seeded users: {inserted_users} inserted, {updated_users} updated.")
 
-    print("\nDatabase seeding completed successfully!")
+    print("\nDatabase seeding completed successfully (non-destructive)!")
     client.close()
 
 if __name__ == "__main__":

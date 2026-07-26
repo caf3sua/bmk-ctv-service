@@ -10,8 +10,8 @@ from openpyxl.utils import get_column_letter
 TEMPLATE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates")
 TEMPLATE_PATH = os.path.join(TEMPLATE_DIR, "collaborator_checklist_template.xlsx")
 
-HEADERS = ["Mã nhân viên", "Họ tên", "CCCD", "Cam kết thuế", "CV", "Thông tin cư trú", "Bằng cấp"]
-EXAMPLE_ROW = ["CTV001", "Nguyễn Văn A", "Đã nộp", "", "Đã nộp", "Đã nộp", ""]
+HEADERS = ["Mã nhân viên", "Họ tên", "CCCD", "Cam kết thuế"]
+EXAMPLE_ROW = ["CTV001", "Nguyễn Văn A", "Đã nộp", ""]
 
 def generate():
     os.makedirs(TEMPLATE_DIR, exist_ok=True)
@@ -47,7 +47,7 @@ def generate():
     ws.cell(
         row=note_row + 2,
         column=1,
-        value="- Cột CCCD, Cam kết thuế, CV, Thông tin cư trú, Bằng cấp: để trống = Chưa nộp, nhập bất kỳ giá trị nào (VD: Đã nộp) = Đã nộp.",
+        value="- Cột CCCD, Cam kết thuế: để trống = Chưa nộp, nhập bất kỳ giá trị nào (VD: Đã nộp) = Đã nộp.",
     ).font = Font(italic=True, size=10)
 
     wb.save(TEMPLATE_PATH)

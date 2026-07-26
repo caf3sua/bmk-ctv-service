@@ -1,782 +1,3364 @@
 [
   {
-    "employeeCode": "CTV001",
-    "fullName": "Đỗ Xuân Yến",
-    "taxCode": "8786335019",
-    "dob": "1991-03-10",
-    "idNumber": "079090000001",
-    "email": "do.xuan.yen1@example.com",
-    "phone": "0910000137",
-    "address": "188 Trần Phú, TP. Nha Trang, Khánh Hòa",
+    "employeeCode": "41941",
+    "fullName": "Nguyễn Thị Huyền Trang",
+    "taxCode": "042303001846",
+    "dob": "2003-05-02",
+    "idNumber": "042303001846",
+    "email": "",
+    "phone": "0963862191",
+    "address": "số nhà 20, ngõ 31, đường Nguyễn Huy Lung, Phường Thành Sen, Tỉnh Hà Tĩnh, Hà Tĩnh",
     "checklist": {
-      "submittedIdCard": true,
+      "submittedIdCard": false,
       "submittedTaxCommitment": false,
-      "liquidationDate": null,
-      "submittedCV": true,
-      "submittedResidenceInfo": true,
-      "submittedDegree": true,
       "serviceContracts": [
         {
           "startDate": null,
           "endDate": null
         }
-      ]
+      ],
+      "liquidationDate": "2026-05-24"
     },
-    "createdAt": "2024-12-15T02:00:00.000Z",
-    "updatedAt": "2024-12-15T02:00:00.000Z"
+    "createdAt": "2026-07-26T11:01:29.107130Z",
+    "updatedAt": "2026-07-26T11:01:29.107130Z"
   },
   {
-    "employeeCode": "CTV002",
-    "fullName": "Hoàng Đức Giang",
-    "taxCode": "9380837730",
-    "dob": "1993-01-15",
-    "idNumber": "079090000002",
-    "email": "hoang.duc.giang2@example.com",
-    "phone": "0910000274",
-    "address": "44 Hai Bà Trưng, Quận Hoàn Kiếm, Hà Nội",
+    "employeeCode": "43659",
+    "fullName": "Hoàng Minh An",
+    "taxCode": "0",
+    "dob": "2004-01-16",
+    "idNumber": "001204017607",
+    "email": "",
+    "phone": "0975143800",
+    "address": "Cụm 7, Thọ An, Đan Phượng, Hà Nội, Hà Nội",
     "checklist": {
-      "submittedIdCard": true,
-      "submittedTaxCommitment": true,
-      "liquidationDate": null,
-      "submittedCV": true,
-      "submittedResidenceInfo": true,
-      "submittedDegree": true,
-      "serviceContracts": [
-        {
-          "startDate": "2022-07-27",
-          "endDate": null
-        }
-      ]
-    },
-    "createdAt": "2024-05-24T02:00:00.000Z",
-    "updatedAt": "2024-05-24T02:00:00.000Z"
-  },
-  {
-    "employeeCode": "CTV003",
-    "fullName": "Lê Ngọc An",
-    "taxCode": "8396143460",
-    "dob": "1989-01-18",
-    "idNumber": "079090000003",
-    "email": "le.ngoc.an3@example.com",
-    "phone": "0910000411",
-    "address": "156 Trần Hưng Đạo, Quận 5, TP. Hồ Chí Minh",
-    "checklist": {
-      "submittedIdCard": true,
-      "submittedTaxCommitment": true,
-      "liquidationDate": null,
-      "submittedCV": true,
-      "submittedResidenceInfo": true,
-      "submittedDegree": true,
+      "submittedIdCard": false,
+      "submittedTaxCommitment": false,
       "serviceContracts": [
         {
           "startDate": null,
           "endDate": null
         }
-      ]
+      ],
+      "liquidationDate": "2026-06-03"
     },
-    "createdAt": "2023-11-23T02:00:00.000Z",
-    "updatedAt": "2023-11-23T02:00:00.000Z"
+    "createdAt": "2026-07-26T11:01:29.216140Z",
+    "updatedAt": "2026-07-26T11:01:29.216140Z"
   },
   {
-    "employeeCode": "CTV004",
-    "fullName": "Lê Ngọc Nam",
-    "taxCode": "9107888078",
-    "dob": "1996-02-14",
-    "idNumber": "079090000004",
-    "email": "le.ngoc.nam4@example.com",
-    "phone": "0910000548",
-    "address": "105 Nguyễn Huệ, Quận Ninh Kiều, Cần Thơ",
-    "checklist": {
-      "submittedIdCard": true,
-      "submittedTaxCommitment": false,
-      "liquidationDate": null,
-      "submittedCV": true,
-      "submittedResidenceInfo": true,
-      "submittedDegree": true,
-      "serviceContracts": [
-        {
-          "startDate": "2023-10-17",
-          "endDate": null
-        }
-      ]
-    },
-    "createdAt": "2022-12-01T02:00:00.000Z",
-    "updatedAt": "2022-12-01T02:00:00.000Z"
-  },
-  {
-    "employeeCode": "CTV005",
-    "fullName": "Phạm Đức Nam",
-    "taxCode": "9905511594",
-    "dob": "1988-01-14",
-    "idNumber": "079090000005",
-    "email": "pham.duc.nam5@example.com",
-    "phone": "0910000685",
-    "address": "189 Điện Biên Phủ, Quận Bình Thạnh, TP. Hồ Chí Minh",
-    "checklist": {
-      "submittedIdCard": true,
-      "submittedTaxCommitment": false,
-      "liquidationDate": null,
-      "submittedCV": true,
-      "submittedResidenceInfo": true,
-      "submittedDegree": true,
-      "serviceContracts": [
-        {
-          "startDate": "2023-03-16",
-          "endDate": null
-        }
-      ]
-    },
-    "createdAt": "2022-06-12T02:00:00.000Z",
-    "updatedAt": "2022-06-12T02:00:00.000Z"
-  },
-  {
-    "employeeCode": "CTV006",
-    "fullName": "Phan Văn An",
-    "taxCode": "8587175672",
-    "dob": "1987-07-27",
-    "idNumber": "079090000006",
-    "email": "phan.van.an6@example.com",
-    "phone": "0910000822",
-    "address": "122 Trần Hưng Đạo, Quận 5, TP. Hồ Chí Minh",
-    "checklist": {
-      "submittedIdCard": true,
-      "submittedTaxCommitment": false,
-      "liquidationDate": null,
-      "submittedCV": true,
-      "submittedResidenceInfo": true,
-      "submittedDegree": true,
-      "serviceContracts": [
-        {
-          "startDate": "2024-01-16",
-          "endDate": null
-        }
-      ]
-    },
-    "createdAt": "2024-06-25T02:00:00.000Z",
-    "updatedAt": "2024-06-25T02:00:00.000Z"
-  },
-  {
-    "employeeCode": "CTV007",
-    "fullName": "Đặng Văn Đạt",
-    "taxCode": "8725557693",
-    "dob": "1985-07-12",
-    "idNumber": "079090000007",
-    "email": "dang.van.dat7@example.com",
-    "phone": "0910000959",
-    "address": "146 Trần Phú, TP. Nha Trang, Khánh Hòa",
-    "checklist": {
-      "submittedIdCard": true,
-      "submittedTaxCommitment": true,
-      "liquidationDate": null,
-      "submittedCV": true,
-      "submittedResidenceInfo": true,
-      "submittedDegree": true,
-      "serviceContracts": [
-        {
-          "startDate": "2024-05-02",
-          "endDate": "2025-11-28"
-        }
-      ]
-    },
-    "createdAt": "2024-01-25T02:00:00.000Z",
-    "updatedAt": "2024-01-25T02:00:00.000Z"
-  },
-  {
-    "employeeCode": "CTV008",
-    "fullName": "Hoàng Thị Quyên",
-    "taxCode": "9390023361",
-    "dob": "1986-03-25",
-    "idNumber": "079090000008",
-    "email": "hoang.thi.quyen8@example.com",
-    "phone": "0910001096",
-    "address": "140 Lê Lợi, Quận Hải Châu, Đà Nẵng",
+    "employeeCode": "42234",
+    "fullName": "Bùi Kim Thoại",
+    "taxCode": "027202009656",
+    "dob": "2002-06-14",
+    "idNumber": "027202009656",
+    "email": "",
+    "phone": "0965973609",
+    "address": "Thôn Nhân Hữu, TT. Nhân Thắng, Gia Bình, Bắc Ninh, Bắc Ninh",
     "checklist": {
       "submittedIdCard": false,
       "submittedTaxCommitment": false,
-      "liquidationDate": null,
-      "submittedCV": true,
-      "submittedResidenceInfo": false,
-      "submittedDegree": true,
       "serviceContracts": [
         {
-          "startDate": "2022-04-07",
-          "endDate": "2025-10-22"
-        }
-      ]
-    },
-    "createdAt": "2024-05-11T02:00:00.000Z",
-    "updatedAt": "2024-05-11T02:00:00.000Z"
-  },
-  {
-    "employeeCode": "CTV009",
-    "fullName": "Lê Đức Phong",
-    "taxCode": "8409026265",
-    "dob": "1988-05-28",
-    "idNumber": "079090000009",
-    "email": "le.duc.phong9@example.com",
-    "phone": "0910001233",
-    "address": "177 Lê Lợi, Quận Hải Châu, Đà Nẵng",
-    "checklist": {
-      "submittedIdCard": false,
-      "submittedTaxCommitment": true,
-      "liquidationDate": null,
-      "submittedCV": true,
-      "submittedResidenceInfo": false,
-      "submittedDegree": true,
-      "serviceContracts": [
-        {
-          "startDate": "2022-06-15",
+          "startDate": null,
           "endDate": null
         }
-      ]
+      ],
+      "liquidationDate": "2026-06-25"
     },
-    "createdAt": "2023-01-21T02:00:00.000Z",
-    "updatedAt": "2023-01-21T02:00:00.000Z"
+    "createdAt": "2026-07-26T11:01:29.322591Z",
+    "updatedAt": "2026-07-26T11:01:29.322591Z"
   },
   {
-    "employeeCode": "CTV010",
-    "fullName": "Ngô Hữu Trang",
+    "employeeCode": "41890",
+    "fullName": "Trần Đỗ Tuấn Khôi",
+    "taxCode": "022204000363",
+    "dob": "2004-11-15",
+    "idNumber": "022204000363",
+    "email": "",
+    "phone": "0899889636",
+    "address": "Tổ 4, khu 6B, Cẩm Trung, Cẩm Phả, Quảng Ninh, Phường Cẩm Trung, Thành phố Cẩm Phả, Quảng Ninh",
+    "checklist": {
+      "submittedIdCard": false,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": "2026-06-18"
+    },
+    "createdAt": "2026-07-26T11:01:29.430025Z",
+    "updatedAt": "2026-07-26T11:01:29.430025Z"
+  },
+  {
+    "employeeCode": "42218",
+    "fullName": "Nguyễn Thị Mai Quỳnh",
+    "taxCode": "034304008805",
+    "dob": "2004-07-19",
+    "idNumber": "034304008805",
+    "email": "",
+    "phone": "0981109740",
+    "address": "Thôn Thượng Phúc, xã Đông Thụy Anh, tỉnh Hưng Yên, Hưng Yên",
+    "checklist": {
+      "submittedIdCard": false,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": "2026-06-18"
+    },
+    "createdAt": "2026-07-26T11:01:29.536271Z",
+    "updatedAt": "2026-07-26T11:01:29.536271Z"
+  },
+  {
+    "employeeCode": "41612",
+    "fullName": "Nguyễn Bùi Quỳnh Anh",
+    "taxCode": "024303014457",
+    "dob": "2003-05-26",
+    "idNumber": "024303014457",
+    "email": "",
+    "phone": "0985269203",
+    "address": "Bồng 2, Thanh Hải, Lục Ngạn, Bắc Giang, Xã Đa Tốn, Huyện Gia Lâm, Hà Nội",
+    "checklist": {
+      "submittedIdCard": false,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": "2026-06-02"
+    },
+    "createdAt": "2026-07-26T11:01:29.640992Z",
+    "updatedAt": "2026-07-26T11:01:29.640992Z"
+  },
+  {
+    "employeeCode": "43862",
+    "fullName": "Đoàn Cẩm Tú",
+    "taxCode": "0",
+    "dob": "2003-07-06",
+    "idNumber": "022303001333",
+    "email": "",
+    "phone": "0967211086",
+    "address": "Tổ 5 khu 1 Phường Cẩm Thành, Thành Phố Cẩm Phả, Tỉnh Quảng Ninh, Quảng Ninh",
+    "checklist": {
+      "submittedIdCard": false,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": "2026-05-27"
+    },
+    "createdAt": "2026-07-26T11:01:29.747874Z",
+    "updatedAt": "2026-07-26T11:01:29.747874Z"
+  },
+  {
+    "employeeCode": "42251",
+    "fullName": "Nguyễn Như Ngọc",
+    "taxCode": "038204000937",
+    "dob": "2004-10-09",
+    "idNumber": "038204000937",
+    "email": "",
+    "phone": "0559200143",
+    "address": "09/122 Lê Huy Toán, phường Đông Quang, tỉnh Thanh Hoá, Phường Quang Trung, Thanh Hóa",
+    "checklist": {
+      "submittedIdCard": false,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": "2026-06-18"
+    },
+    "createdAt": "2026-07-26T11:01:29.855132Z",
+    "updatedAt": "2026-07-26T11:01:29.855132Z"
+  },
+  {
+    "employeeCode": "41536",
+    "fullName": "Ma Thị Minh",
+    "taxCode": "019303002316",
+    "dob": "2003-01-02",
+    "idNumber": "019303002316",
+    "email": "",
+    "phone": "0383675098",
+    "address": "Đồng Ban, Phú Đình, Thái Nguyên, Xã Đồng Liên, Huyện Phú Bình, Thái Nguyên",
+    "checklist": {
+      "submittedIdCard": false,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": "2026-05-18"
+    },
+    "createdAt": "2026-07-26T11:01:29.961543Z",
+    "updatedAt": "2026-07-26T11:01:29.961543Z"
+  },
+  {
+    "employeeCode": "40952",
+    "fullName": "Đinh Thị Tâm Hương",
+    "taxCode": "037303004001",
+    "dob": "2003-12-20",
+    "idNumber": "037303004001",
+    "email": "",
+    "phone": "0386093129",
+    "address": "Thôn Nam Lãng Nội, Xã Gia Lập, Huyện Gia Viễn, Ninh Bình",
+    "checklist": {
+      "submittedIdCard": false,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": "2026-05-18"
+    },
+    "createdAt": "2026-07-26T11:01:30.068799Z",
+    "updatedAt": "2026-07-26T11:01:30.068799Z"
+  },
+  {
+    "employeeCode": "41555",
+    "fullName": "Hứa Văn Tấn Huy",
+    "taxCode": "052201008810",
+    "dob": "2003-08-02",
+    "idNumber": "052201008810",
+    "email": "",
+    "phone": "0368803959",
+    "address": "Xóm 1, xã Bình Phú, Tình Gia Lai, Thị trấn Phú Thiện, Huyện Phú Thiện, Gia Lai",
+    "checklist": {
+      "submittedIdCard": false,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": "2026-06-02"
+    },
+    "createdAt": "2026-07-26T11:01:30.176549Z",
+    "updatedAt": "2026-07-26T11:01:30.176549Z"
+  },
+  {
+    "employeeCode": "41893",
+    "fullName": "Trương Thị Hồng Viên",
+    "taxCode": "052303003470",
+    "dob": "2003-03-12",
+    "idNumber": "052303003470",
+    "email": "",
+    "phone": "0364745504",
+    "address": "Xóm 11, Thôn Mỹ An 2, Phường Hoài Nhơn, Tỉnh Gia Lai, Gia Lai",
+    "checklist": {
+      "submittedIdCard": false,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": "2026-05-24"
+    },
+    "createdAt": "2026-07-26T11:01:30.284053Z",
+    "updatedAt": "2026-07-26T11:01:30.284053Z"
+  },
+  {
+    "employeeCode": "40655",
+    "fullName": "Huỳnh Tú Uyên",
+    "taxCode": "058303001844",
+    "dob": "2001-11-25",
+    "idNumber": "058303001844",
+    "email": "",
+    "phone": "0928706268",
+    "address": "72/136 Trường Chinh, Khu phố 2, Phường Văn Hải, Thành phố Phan Rang-Tháp Chàm, Ninh Thuận, Phường Văn Hải, Thành phố Phan Rang-Tháp Chàm, Ninh Thuận",
+    "checklist": {
+      "submittedIdCard": false,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": "2026-05-26"
+    },
+    "createdAt": "2026-07-26T11:01:30.388188Z",
+    "updatedAt": "2026-07-26T11:01:30.388188Z"
+  },
+  {
+    "employeeCode": "35922",
+    "fullName": "Nguyễn Phương Thanh",
+    "taxCode": "074301005579",
+    "dob": "1995-02-13",
+    "idNumber": "074301005579",
+    "email": "",
+    "phone": "0362632860",
+    "address": "Ấp Vườn Bưởi, Xã Lộc Thiện, Huyện Lộc Ninh, Tỉnh Bình Phước, Bình Phước",
+    "checklist": {
+      "submittedIdCard": false,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": "2026-06-19"
+    },
+    "createdAt": "2026-07-26T11:01:30.494195Z",
+    "updatedAt": "2026-07-26T11:01:30.494195Z"
+  },
+  {
+    "employeeCode": "42175",
+    "fullName": "Nguyễn Phạm Mỹ Ngọc",
+    "taxCode": "056195010065",
+    "dob": "2001-07-12",
+    "idNumber": "056195010065",
+    "email": "",
+    "phone": "0358678508",
+    "address": "Thôn Tuân Thừa, Xã Tân Định, Tỉnh Khánh Hòa, Khánh Hòa",
+    "checklist": {
+      "submittedIdCard": false,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": "2026-06-15"
+    },
+    "createdAt": "2026-07-26T11:01:30.611784Z",
+    "updatedAt": "2026-07-26T11:01:30.611784Z"
+  },
+  {
+    "employeeCode": "40957",
+    "fullName": "Nguyễn Thị Khánh An",
+    "taxCode": "056301006037",
+    "dob": "2002-12-18",
+    "idNumber": "056301006037",
+    "email": "",
+    "phone": "0986494736",
+    "address": "171/37 Phước Long, Phường Nam Khánh Hòa, Khánh Hòa, Phường Phước Hòa, Thành phố Nha Trang, Khánh Hòa",
+    "checklist": {
+      "submittedIdCard": false,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": "2026-05-09"
+    },
+    "createdAt": "2026-07-26T11:01:30.721731Z",
+    "updatedAt": "2026-07-26T11:01:30.721731Z"
+  },
+  {
+    "employeeCode": "41993",
+    "fullName": "Trịnh Thị Diễm Quỳnh",
+    "taxCode": "067302005009",
+    "dob": "2003-05-15",
+    "idNumber": "067302005009",
+    "email": "",
+    "phone": "0963679369",
+    "address": "Thôn Đắc An, Xã Thuận An, Tỉnh Lâm Đồng, Lâm Đồng",
+    "checklist": {
+      "submittedIdCard": false,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": "2026-05-31"
+    },
+    "createdAt": "2026-07-26T11:01:30.829168Z",
+    "updatedAt": "2026-07-26T11:01:30.829168Z"
+  },
+  {
+    "employeeCode": "41974",
+    "fullName": "Lê Thị Bảo Hân",
+    "taxCode": "072303003371",
+    "dob": "2004-01-05",
+    "idNumber": "072303003371",
+    "email": "",
+    "phone": "0869 176 459",
+    "address": "25A/9, tổ 17, Khu phố 4, phường Tân Ninh, Tỉnh Tây Ninh, Tây Ninh",
+    "checklist": {
+      "submittedIdCard": false,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": "2026-06-06"
+    },
+    "createdAt": "2026-07-26T11:01:30.933392Z",
+    "updatedAt": "2026-07-26T11:01:30.933392Z"
+  },
+  {
+    "employeeCode": "43169",
+    "fullName": "Ngô Quyên Quyên",
+    "taxCode": "075304018192",
+    "dob": "2002-10-27",
+    "idNumber": "075304018192",
+    "email": "",
+    "phone": "0987457734",
+    "address": "Tổ 17, khu phố 5, Vĩnh An, Vĩnh Cửu, Đồng Nai, Đồng Nai",
+    "checklist": {
+      "submittedIdCard": false,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": "2026-05-23"
+    },
+    "createdAt": "2026-07-26T11:01:31.039403Z",
+    "updatedAt": "2026-07-26T11:01:31.039403Z"
+  },
+  {
+    "employeeCode": "42147",
+    "fullName": "Trần Ngọc Quỳnh",
+    "taxCode": "075302008453",
+    "dob": "2002-06-06",
+    "idNumber": "075302008453",
+    "email": "",
+    "phone": "0866096961",
+    "address": "4A Tổ 18 Khu phố 5, Phường Trảng Dài, Thành phố Biên Hòa, Tỉnh Đồng Nai, Đồng Nai",
+    "checklist": {
+      "submittedIdCard": false,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": "2026-06-08"
+    },
+    "createdAt": "2026-07-26T11:01:31.146717Z",
+    "updatedAt": "2026-07-26T11:01:31.146717Z"
+  },
+  {
+    "employeeCode": "41938",
+    "fullName": "Nguyễn Thị Như Quỳnh",
+    "taxCode": "052302007020",
+    "dob": "2003-11-26",
+    "idNumber": "052302007020",
+    "email": "",
+    "phone": "0349445152",
+    "address": "43 Phạm Ngũ Lão, Phường Nghĩa Lộ, Thành phố Quảng Ngãi, Tỉnh Quảng Ngãi, Quảng Ngãi",
+    "checklist": {
+      "submittedIdCard": false,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": "2026-06-07"
+    },
+    "createdAt": "2026-07-26T11:01:31.254829Z",
+    "updatedAt": "2026-07-26T11:01:31.254829Z"
+  },
+  {
+    "employeeCode": "42042",
+    "fullName": "Nguyễn Thanh Vân Lam",
+    "taxCode": "056303012234",
+    "dob": "2003-04-15",
+    "idNumber": "056303012234",
+    "email": "",
+    "phone": "0945387221",
+    "address": "Thôn Tân Sinh Đông, Xã Cam Lâm, Tỉnh Khánh Hòa, Khánh Hòa",
+    "checklist": {
+      "submittedIdCard": false,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": "2026-06-02"
+    },
+    "createdAt": "2026-07-26T11:01:31.361338Z",
+    "updatedAt": "2026-07-26T11:01:31.361338Z"
+  },
+  {
+    "employeeCode": "40245",
+    "fullName": "Huỳnh Ngọc Yến Vy",
+    "taxCode": "082303003248",
+    "dob": "2002-09-25",
+    "idNumber": "082303003248",
+    "email": "",
+    "phone": "0896.499.415",
+    "address": "Ấp Song Bình, Huyện Chợ Gạo, Tỉnh Tiền Giang, Xã Song Bình, Huyện Chợ Gạo, Tiền Giang",
+    "checklist": {
+      "submittedIdCard": false,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": "2026-05-27"
+    },
+    "createdAt": "2026-07-26T11:01:31.467113Z",
+    "updatedAt": "2026-07-26T11:01:31.467113Z"
+  },
+  {
+    "employeeCode": "42051",
+    "fullName": "Huỳnh Phương Thùy",
+    "taxCode": "049302000206",
+    "dob": "2002-09-25",
+    "idNumber": "049302000206",
+    "email": "",
+    "phone": "0346704156",
+    "address": "1/8 Ấp Tiền Lân, Xã Bà Điểm, Huyện Hóc Môn, TP. Hồ Chí Minh, Hồ Chí Minh",
+    "checklist": {
+      "submittedIdCard": false,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": "2026-06-02"
+    },
+    "createdAt": "2026-07-26T11:01:31.572003Z",
+    "updatedAt": "2026-07-26T11:01:31.572003Z"
+  },
+  {
+    "employeeCode": "42923",
+    "fullName": "Trần Văn Quang",
+    "taxCode": "034204006490",
+    "dob": "2004-11-10",
+    "idNumber": "034204006490",
+    "email": "",
+    "phone": "0962865491",
+    "address": "25/58/Nguyễn Khánh Toàn, Quan Hoa, Cầu Giấy, Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:31.677859Z",
+    "updatedAt": "2026-07-26T11:01:31.677859Z"
+  },
+  {
+    "employeeCode": "42924",
+    "fullName": "Lâm Minh Quang",
+    "taxCode": "001204014772",
+    "dob": "2004-11-04",
+    "idNumber": "001204014772",
+    "email": "",
+    "phone": "0943123827",
+    "address": "69 Ngõ 199 Lò Đúc, Đống Mác, Hai Bà Trưng, Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:31.783555Z",
+    "updatedAt": "2026-07-26T11:01:31.783555Z"
+  },
+  {
+    "employeeCode": "42925",
+    "fullName": "Hoàng Xuân Việt",
+    "taxCode": "001202007324",
+    "dob": "2002-10-15",
+    "idNumber": "001202007324",
+    "email": "",
+    "phone": "0901729301",
+    "address": "Tổ 5, phường Cầu Giấy, Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:31.888370Z",
+    "updatedAt": "2026-07-26T11:01:31.888370Z"
+  },
+  {
+    "employeeCode": "42926",
+    "fullName": "Nguyễn Hoàng Thanh Lam",
+    "taxCode": "001304051395",
+    "dob": "2004-08-20",
+    "idNumber": "001304051395",
+    "email": "",
+    "phone": "0862218859",
+    "address": "3 Nguyễn Sơn, Ngọc Lâm, Long Biên, Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:32.064674Z",
+    "updatedAt": "2026-07-26T11:01:32.064674Z"
+  },
+  {
+    "employeeCode": "42928",
+    "fullName": "Bùi Hoàng Tiến Đạt",
+    "taxCode": "001204020767",
+    "dob": "2004-04-21",
+    "idNumber": "001204020767",
+    "email": "",
+    "phone": "0333283004",
+    "address": "Bãi Tháp - xã Đan Phượng - Thành phố Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:32.264212Z",
+    "updatedAt": "2026-07-26T11:01:32.264212Z"
+  },
+  {
+    "employeeCode": "42931",
+    "fullName": "Hoàng Thị Thanh Ngân",
+    "taxCode": "036303001435",
+    "dob": "2003-06-29",
+    "idNumber": "036303001435",
+    "email": "",
+    "phone": "0896009149",
+    "address": "Xóm 10, Nghĩa Hưng, Ninh Bình",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:32.378703Z",
+    "updatedAt": "2026-07-26T11:01:32.378703Z"
+  },
+  {
+    "employeeCode": "42934",
+    "fullName": "Nguyễn Hữu Khôi",
+    "taxCode": "0",
+    "dob": "2004-01-15",
+    "idNumber": "001204001157",
+    "email": "",
+    "phone": "0982507913",
+    "address": "N105 Nguyễn Phong Sắc, Dịch Vọng Hậu, Cầu Giấy Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:32.487348Z",
+    "updatedAt": "2026-07-26T11:01:32.487348Z"
+  },
+  {
+    "employeeCode": "42936",
+    "fullName": "Nguyễn Tuệ Anh",
+    "taxCode": "001304015988",
+    "dob": "2004-11-23",
+    "idNumber": "001304015988",
+    "email": "",
+    "phone": "0963645511",
+    "address": "Số 1 ngách 165/36 Khương Thượng, phường Kim Liên, Thành phố Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:32.599509Z",
+    "updatedAt": "2026-07-26T11:01:32.599509Z"
+  },
+  {
+    "employeeCode": "42940",
+    "fullName": "Nguyễn Tuấn Minh",
+    "taxCode": "019202000046",
+    "dob": "2002-07-21",
+    "idNumber": "019202000046",
+    "email": "",
+    "phone": "0339633289",
+    "address": "Số 9 TT5.2 KĐT Ao Sào, phường Hoàng Mai, thành phố Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:32.712670Z",
+    "updatedAt": "2026-07-26T11:01:32.712670Z"
+  },
+  {
+    "employeeCode": "42943",
+    "fullName": "Nguyễn Vũ Huy",
+    "taxCode": "094204007569",
+    "dob": "2004-06-02",
+    "idNumber": "094204007569",
+    "email": "",
+    "phone": "0379934607",
+    "address": "Ấp Quang Vinh, Xã Vĩnh Lợi, Thành Phố Cần Thơ",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:32.818276Z",
+    "updatedAt": "2026-07-26T11:01:32.818276Z"
+  },
+  {
+    "employeeCode": "42947",
+    "fullName": "Nguyễn Nhật Huy",
+    "taxCode": "036204014687",
+    "dob": "2004-11-29",
+    "idNumber": "036204014687",
+    "email": "",
+    "phone": "0849291104",
+    "address": "Số nhà 406 đường Trần Hưng Đạo/ Phường Nam Định/ Tỉnh Ninh Bình",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:32.932528Z",
+    "updatedAt": "2026-07-26T11:01:32.932528Z"
+  },
+  {
+    "employeeCode": "42950",
+    "fullName": "Nguyễn Thanh Tùng",
+    "taxCode": "001204015425",
+    "dob": "2004-06-08",
+    "idNumber": "001204015425",
+    "email": "",
+    "phone": "0941546352",
+    "address": "55 ngõ Trung Tiền, Khâm Thiên, Đống Đa, Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:33.044837Z",
+    "updatedAt": "2026-07-26T11:01:33.044837Z"
+  },
+  {
+    "employeeCode": "42951",
+    "fullName": "Đặng Tuấn Cường",
+    "taxCode": "001204017014",
+    "dob": "2004-05-25",
+    "idNumber": "001204017014",
+    "email": "",
+    "phone": "0336920396",
+    "address": "Số nhà 28 – Ngõ 292 – TDP Ngang – Tây Mỗ - Nam Từ Liêm – Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:33.150782Z",
+    "updatedAt": "2026-07-26T11:01:33.150782Z"
+  },
+  {
+    "employeeCode": "43010",
+    "fullName": "Nguyễn Minh Phương",
+    "taxCode": "042203001696",
+    "dob": "2003-09-10",
+    "idNumber": "042203001696",
+    "email": "",
+    "phone": "0982565117",
+    "address": "Số nhà 27, ngõ 13, đường Hải Thượng Lãn Ông, tổ dân phố 1 Tân Giang, Phường Thành Sen, Tỉnh Hà Tĩnh",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:33.256169Z",
+    "updatedAt": "2026-07-26T11:01:33.256169Z"
+  },
+  {
+    "employeeCode": "42953",
+    "fullName": "Trịnh Tùng Dương",
+    "taxCode": "001204002174",
+    "dob": "2004-05-30",
+    "idNumber": "001204002174",
+    "email": "",
+    "phone": "0362994678",
+    "address": "Số 7 ngõ 433 - phố Bạch Mai - phường Bạch Mai - Thành phố Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:33.361987Z",
+    "updatedAt": "2026-07-26T11:01:33.361987Z"
+  },
+  {
+    "employeeCode": "42954",
+    "fullName": "Tạ Đình Đồng",
+    "taxCode": "001204011353",
+    "dob": "2004-03-16",
+    "idNumber": "001204011353",
+    "email": "",
+    "phone": "0366163617",
+    "address": "Đội 3 – thôn Đông Hạ - xã Phú Cát – Thành phố Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:33.465835Z",
+    "updatedAt": "2026-07-26T11:01:33.465835Z"
+  },
+  {
+    "employeeCode": "42955",
+    "fullName": "Nguyễn Thành Long",
+    "taxCode": "015203002185",
+    "dob": "2003-02-15",
+    "idNumber": "015203002185",
+    "email": "",
+    "phone": "0848141333",
+    "address": "2218 – chung cư HH1C – Linh Đàm – phường Hoàng Liệt – quận Hoàng Mai – Thành phố Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:33.572458Z",
+    "updatedAt": "2026-07-26T11:01:33.572458Z"
+  },
+  {
+    "employeeCode": "42956",
+    "fullName": "Nguyễn Thảo Hiền",
+    "taxCode": "001303017235",
+    "dob": "2003-04-14",
+    "idNumber": "001303017235",
+    "email": "",
+    "phone": "0382281404",
+    "address": "Thôn Vĩnh Thanh - xã Vĩnh Thanh – Thành phố Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:33.681277Z",
+    "updatedAt": "2026-07-26T11:01:33.681277Z"
+  },
+  {
+    "employeeCode": "42958",
+    "fullName": "Nguyễn Anh Mai Ngọc",
+    "taxCode": "001301003294",
+    "dob": "2001-08-29",
+    "idNumber": "001301003294",
+    "email": "",
+    "phone": "0968995889",
+    "address": "B10 102 TT Phương Mai, phường Kim Liên, Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:33.786599Z",
+    "updatedAt": "2026-07-26T11:01:33.786599Z"
+  },
+  {
+    "employeeCode": "42959",
+    "fullName": "Đặng Thị Minh Anh",
+    "taxCode": "001302034328",
+    "dob": "2002-06-06",
+    "idNumber": "001302034328",
+    "email": "",
+    "phone": "0962505615",
+    "address": "Thôn Đào Xá, xã Thắng Lợi, Thường Tín, Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:33.891673Z",
+    "updatedAt": "2026-07-26T11:01:33.891673Z"
+  },
+  {
+    "employeeCode": "42960",
+    "fullName": "Tạ Quang Duy",
+    "taxCode": "040203009042",
+    "dob": "2003-03-18",
+    "idNumber": "040203009042",
+    "email": "",
+    "phone": "0857344255",
+    "address": "Xóm Hồng Khánh, Nghĩa Đàn, Nghệ An",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:33.997376Z",
+    "updatedAt": "2026-07-26T11:01:33.997376Z"
+  },
+  {
+    "employeeCode": "42961",
+    "fullName": "Đoàn Doanh Thái",
+    "taxCode": "001204020015",
+    "dob": "2004-04-06",
+    "idNumber": "001204020015",
+    "email": "",
+    "phone": "0394970604",
+    "address": "Số 5 – Ngõ 8, Ngách 2- Hữu Hòa – Thanh Trì- Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:34.103080Z",
+    "updatedAt": "2026-07-26T11:01:34.103080Z"
+  },
+  {
+    "employeeCode": "42962",
+    "fullName": "Nguyễn Bảo Chi",
+    "taxCode": "001304003642",
+    "dob": "2004-05-14",
+    "idNumber": "001304003642",
+    "email": "",
+    "phone": "0904145122",
+    "address": "Tổ 8, phường Việt Hưng, Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:34.207812Z",
+    "updatedAt": "2026-07-26T11:01:34.207812Z"
+  },
+  {
+    "employeeCode": "42963",
+    "fullName": "Nguyễn Thị Thu Huyền",
+    "taxCode": "034304004011",
+    "dob": "2004-09-20",
+    "idNumber": "034304004011",
+    "email": "",
+    "phone": "0973906362",
+    "address": "An Phúc, Lê Lợi, Hưng Yên",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:34.313640Z",
+    "updatedAt": "2026-07-26T11:01:34.313640Z"
+  },
+  {
+    "employeeCode": "42964",
+    "fullName": "Phạm Lâm Hà",
+    "taxCode": "019204000781",
+    "dob": "2004-07-05",
+    "idNumber": "019204000781",
+    "email": "",
+    "phone": "0372748774",
+    "address": "Tổ 1, phường Quyết Thắng, tỉnh Thái Nguyên",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:34.418503Z",
+    "updatedAt": "2026-07-26T11:01:34.418503Z"
+  },
+  {
+    "employeeCode": "42965",
+    "fullName": "Bùi Công Mạnh",
+    "taxCode": "001204004592",
+    "dob": "2004-03-14",
+    "idNumber": "001204004592",
+    "email": "",
+    "phone": "0382401905",
+    "address": "523B - Quang Lãm - Tổ 4 - Phú Lãm - Hà Đông - Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:34.524523Z",
+    "updatedAt": "2026-07-26T11:01:34.524523Z"
+  },
+  {
+    "employeeCode": "42966",
+    "fullName": "Trần Thị Thùy Linh",
+    "taxCode": "022303006048",
+    "dob": "2003-10-29",
+    "idNumber": "022303006048",
+    "email": "",
+    "phone": "0866628516",
+    "address": "Tổ 3, khu Vĩnh Phú, Mạo Khê, Quảng Ninh",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:34.632193Z",
+    "updatedAt": "2026-07-26T11:01:34.632193Z"
+  },
+  {
+    "employeeCode": "42967",
+    "fullName": "Nguyễn Quỳnh Anh",
+    "taxCode": "024303000336",
+    "dob": "2003-04-27",
+    "idNumber": "024303000336",
+    "email": "",
+    "phone": "0943924784",
+    "address": "Lý Thái Tổ, phường Bắc Giang, tỉnh Bắc Ninh",
+    "checklist": {
+      "submittedIdCard": true,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "submittedTaxCommitment": false,
+      "liquidationDate": null,
+      "idCardFile": "documents/42967_idCard_1785063977_TL02-42967.jpg",
+      "serviceContractFile": null,
+      "taxCommitmentFile": null,
+      "liquidationFile": null
+    },
+    "createdAt": "2026-07-26T11:01:34.739843Z",
+    "updatedAt": "2026-07-26T11:06:18.460929Z"
+  },
+  {
+    "employeeCode": "42989",
+    "fullName": "Bùi Minh Đức",
+    "taxCode": "035203000404",
+    "dob": "2003-08-06",
+    "idNumber": "035203000404",
+    "email": "",
+    "phone": "0395907405",
+    "address": "303 D1, TT Trung Tự, Trung Tự, Đống Đa, Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:34.850941Z",
+    "updatedAt": "2026-07-26T11:01:34.850941Z"
+  },
+  {
+    "employeeCode": "43028",
+    "fullName": "Hoàng Đức Duy",
+    "taxCode": "001204002368",
+    "dob": "2004-07-09",
+    "idNumber": "001204002368",
+    "email": "",
+    "phone": "0382690200",
+    "address": "178 Yên  Lãng, phường Đống Đa, Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:34.959150Z",
+    "updatedAt": "2026-07-26T11:01:34.959150Z"
+  },
+  {
+    "employeeCode": "43976",
+    "fullName": "Dương Quốc Hưng",
+    "taxCode": "10004290105",
+    "dob": "2004-09-07",
+    "idNumber": "001204016829",
+    "email": "",
+    "phone": "0981653283",
+    "address": "Số nhà 16, ngõ 62 Tây Trà, tổ 3, phường Hoàng Mai, Thành phố Hà Nội, Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:35.068878Z",
+    "updatedAt": "2026-07-26T11:01:35.068878Z"
+  },
+  {
+    "employeeCode": "43942",
+    "fullName": "Mai Phương Anh",
+    "taxCode": "10004290397",
+    "dob": "1998-12-16",
+    "idNumber": "034198005229",
+    "email": "",
+    "phone": "0963713498",
+    "address": "SN 06/17/482 Trần Hưng Đạo, phường Trần Hưng Đạo, tỉnh Hưng Yên, Hưng Yên",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:35.180116Z",
+    "updatedAt": "2026-07-26T11:01:35.180116Z"
+  },
+  {
+    "employeeCode": "44124",
+    "fullName": "Hoàng Diệu Ly",
+    "taxCode": "0",
+    "dob": "2004-09-28",
+    "idNumber": "020304004358",
+    "email": "",
+    "phone": "0339005334",
+    "address": "Thôn Thuần Như 1, xã Bình Gia, tỉnh Lạng Sơn, Lạng Sơn",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:35.289136Z",
+    "updatedAt": "2026-07-26T11:01:35.289136Z"
+  },
+  {
+    "employeeCode": "44126",
+    "fullName": "Nguyễn Thị Huyền Thương",
+    "taxCode": "0",
+    "dob": "2004-10-11",
+    "idNumber": "035304005139",
+    "email": "",
+    "phone": "0981173264",
+    "address": "Thôn 2, Xã Lý Nhân, Tỉnh Ninh Bình, Bắc Ninh",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:35.399554Z",
+    "updatedAt": "2026-07-26T11:01:35.399554Z"
+  },
+  {
+    "employeeCode": "44129",
+    "fullName": "Nguyễn Văn Quyền",
+    "taxCode": "0",
+    "dob": "2004-12-17",
+    "idNumber": "019204010289",
+    "email": "",
+    "phone": "0878775240",
+    "address": "Xóm Trại – Xã Phú Bình- Tỉnh Thái Nguyên, Thái Nguyên",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:35.507993Z",
+    "updatedAt": "2026-07-26T11:01:35.507993Z"
+  },
+  {
+    "employeeCode": "44132",
+    "fullName": "Trần Thanh Huyền",
+    "taxCode": "0",
+    "dob": "2004-08-03",
+    "idNumber": "036304008998",
+    "email": "",
+    "phone": "0839740357",
+    "address": "Xóm An Phát, Xã Nam Ninh, Tỉnh Ninh Bình, Ninh Bình",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:35.617226Z",
+    "updatedAt": "2026-07-26T11:01:35.617226Z"
+  },
+  {
+    "employeeCode": "44280",
+    "fullName": "Phạm Minh Huyền",
+    "taxCode": "0",
+    "dob": "2004-07-08",
+    "idNumber": "017304000220",
+    "email": "",
+    "phone": "0344036860",
+    "address": "Số nhà 11, ngõ 88, đường An Dương Vương, phường Hòa Bình, tỉnh Phú Thọ, Phú Thọ",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": "2026-06-08",
+          "endDate": "2026-12-07"
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:35.726415Z",
+    "updatedAt": "2026-07-26T11:01:35.726415Z"
+  },
+  {
+    "employeeCode": "44282",
+    "fullName": "Hoàng Trọng Nghĩa",
+    "taxCode": "0",
+    "dob": "2004-11-03",
+    "idNumber": "020204008184",
+    "email": "",
+    "phone": "0827691931",
+    "address": "Khối phố 6B, Xã Bình Gia, Tỉnh Lạng Sơn, Lạng Sơn",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": "2026-06-08",
+          "endDate": "2026-12-07"
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:35.834456Z",
+    "updatedAt": "2026-07-26T11:01:35.834456Z"
+  },
+  {
+    "employeeCode": "44568",
+    "fullName": "Nguyễn Thị Lê",
+    "taxCode": "0",
+    "dob": "2005-01-27",
+    "idNumber": "001305000920",
+    "email": "",
+    "phone": "0382492231",
+    "address": "Thôn 2, Phú Nghĩa, Hà Nội, Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": "2026-06-25",
+          "endDate": "2026-12-24"
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:35.943859Z",
+    "updatedAt": "2026-07-26T11:01:35.943859Z"
+  },
+  {
+    "employeeCode": "44567",
+    "fullName": "Đỗ Thị Thu Ngân",
+    "taxCode": "0",
+    "dob": "2005-05-25",
+    "idNumber": "033305006391",
+    "email": "",
+    "phone": "0377695322",
+    "address": "Thôn Thư Thị, Tân Lập, Yên Mỹ, Hưng Yên, Hưng Yên",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": "2026-06-25",
+          "endDate": "2026-12-24"
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:36.055410Z",
+    "updatedAt": "2026-07-26T11:01:36.055410Z"
+  },
+  {
+    "employeeCode": "44562",
+    "fullName": "Đỗ Phúc Minh Phương",
+    "taxCode": "0",
+    "dob": "2004-02-08",
+    "idNumber": "008304005191",
+    "email": "",
+    "phone": "0858216082",
+    "address": "Số nhà 16, tổ 5, đường Lương Thế Vinh, Phường Nông Tiến, Tỉnh Tuyên Quang, Tuyên Quang",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": "2026-06-25",
+          "endDate": "2026-12-24"
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:36.164074Z",
+    "updatedAt": "2026-07-26T11:01:36.164074Z"
+  },
+  {
+    "employeeCode": "44508",
+    "fullName": "Nguyễn Thị Huyền",
+    "taxCode": "0",
+    "dob": "2003-04-14",
+    "idNumber": "001303015052",
+    "email": "",
+    "phone": "0987881667",
+    "address": "Cụm 2, Xã Ô Diên, Thành phố Hà Nội, Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": "2026-06-18",
+          "endDate": "2026-12-17"
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:36.273552Z",
+    "updatedAt": "2026-07-26T11:01:36.273552Z"
+  },
+  {
+    "employeeCode": "44560",
+    "fullName": "Nguyễn Phương Anh",
+    "taxCode": "0",
+    "dob": "2004-10-15",
+    "idNumber": "001304009507",
+    "email": "",
+    "phone": "0969917828",
+    "address": "Số 1 – ngách 50 – ngõ 140 - đường Trần Phú – Tổ dân phố 8 - phường Hà Đông – Thành phố Hà Nội, Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": "2026-06-25",
+          "endDate": "2026-12-24"
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:36.381702Z",
+    "updatedAt": "2026-07-26T11:01:36.381702Z"
+  },
+  {
+    "employeeCode": "44569",
+    "fullName": "Đinh Đức Kỳ",
+    "taxCode": "0",
+    "dob": "2004-07-12",
+    "idNumber": "001204016876",
+    "email": "",
+    "phone": "0582590616",
+    "address": "Xóm 6 - Thôn Nam Dương, Hòa Nam, Ứng Hòa, Hà Nội, Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": "2026-06-25",
+          "endDate": "2026-12-24"
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:36.476877Z",
+    "updatedAt": "2026-07-26T11:01:36.476877Z"
+  },
+  {
+    "employeeCode": "44563",
+    "fullName": "Đặng Tiến Đạt",
+    "taxCode": "0",
+    "dob": "2004-09-20",
+    "idNumber": "001204022927",
+    "email": "",
+    "phone": "0984419475",
+    "address": "Số nhà 90, thôn Khúc Thủy, xã Bình Minh, Thành phố Hà Nội, Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": "2026-06-25",
+          "endDate": "2026-12-24"
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:36.594845Z",
+    "updatedAt": "2026-07-26T11:01:36.594845Z"
+  },
+  {
+    "employeeCode": "44068",
+    "fullName": "Nguyễn Minh Ngọc",
+    "taxCode": "0",
+    "dob": "2003-10-20",
+    "idNumber": "015303000689",
+    "email": "",
+    "phone": "0397527510",
+    "address": "Thôn Ba Chãng, Xã Thác Bà, Tỉnh Lào Cai, Lào Cai",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": "2026-06-01",
+          "endDate": "2026-11-30"
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:36.704819Z",
+    "updatedAt": "2026-07-26T11:01:36.704819Z"
+  },
+  {
+    "employeeCode": "44459",
+    "fullName": "Ngô Hải Đăng",
+    "taxCode": "0",
+    "dob": "2004-02-03",
+    "idNumber": "001204010804",
+    "email": "",
+    "phone": "0868298461",
+    "address": "Dục Nội, Việt Hùng, Đông Anh, Hà Nội, Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": "2026-06-18",
+          "endDate": "2026-12-17"
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:36.810529Z",
+    "updatedAt": "2026-07-26T11:01:36.810529Z"
+  },
+  {
+    "employeeCode": "44462",
+    "fullName": "Doãn Xuân Nam",
+    "taxCode": "0",
+    "dob": "2002-05-16",
+    "idNumber": "001202033673",
+    "email": "",
+    "phone": "0971856598",
+    "address": "Thôn An Lãng, Xã Phú Xuyên, Thành phố Hà Nội, Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": "2026-06-18",
+          "endDate": "2026-12-17"
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:36.917295Z",
+    "updatedAt": "2026-07-26T11:01:36.917295Z"
+  },
+  {
+    "employeeCode": "44457",
+    "fullName": "Nguyễn Mai Phương",
+    "taxCode": "0",
+    "dob": "2004-05-12",
+    "idNumber": "031304003048",
+    "email": "",
+    "phone": "0838303382",
+    "address": "Thôn Lai Hạ - Xã An Lão - Thành phố Hải Phòng, Hải Phòng",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": "2026-06-18",
+          "endDate": "2026-12-17"
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:37.025980Z",
+    "updatedAt": "2026-07-26T11:01:37.025980Z"
+  },
+  {
+    "employeeCode": "44456",
+    "fullName": "Ngô Thị Luân",
+    "taxCode": "0",
+    "dob": "2004-01-27",
+    "idNumber": "026304004250",
+    "email": "",
+    "phone": "0366147406",
+    "address": "Thôn Yên Nội, xã Nguyệt Đức, tỉnh Phú Thọ, Phú Thọ",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": "2026-06-18",
+          "endDate": "2026-12-17"
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:37.134502Z",
+    "updatedAt": "2026-07-26T11:01:37.134502Z"
+  },
+  {
+    "employeeCode": "44458",
+    "fullName": "Trần Đình Hùng",
+    "taxCode": "0",
+    "dob": "2004-01-25",
+    "idNumber": "001200400744",
+    "email": "",
+    "phone": "0778989104",
+    "address": "Tổ 19 Thị trấn Đông Anh, Đông Anh, Hà Nội, Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": "2026-06-18",
+          "endDate": "2026-12-17"
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:37.240658Z",
+    "updatedAt": "2026-07-26T11:01:37.240658Z"
+  },
+  {
+    "employeeCode": "44471",
+    "fullName": "Trần Ngọc Dung",
+    "taxCode": "0",
+    "dob": "2003-08-19",
+    "idNumber": "027303003148",
+    "email": "",
+    "phone": "0972258993",
+    "address": "Tam Sơn - Tân Lãng - Lương Tài - Bắc Ninh, Bắc Ninh",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": "2026-06-18",
+          "endDate": "2026-12-17"
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:37.347278Z",
+    "updatedAt": "2026-07-26T11:01:37.347278Z"
+  },
+  {
+    "employeeCode": "44469",
+    "fullName": "Đinh Thị Ngọc Mai",
+    "taxCode": "0",
+    "dob": "2003-09-22",
+    "idNumber": "001303042516",
+    "email": "",
+    "phone": "0337537542",
+    "address": "15 đường Tân Dân Thao Chính, Đại Nghiệp, Chuyên Mỹ, Hà Nội, Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": "2026-06-18",
+          "endDate": "2026-12-17"
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:37.452228Z",
+    "updatedAt": "2026-07-26T11:01:37.452228Z"
+  },
+  {
+    "employeeCode": "44461",
+    "fullName": "Nguyễn Khánh Linh",
+    "taxCode": "0",
+    "dob": "2004-03-08",
+    "idNumber": "001304036941",
+    "email": "",
+    "phone": "0396807495",
+    "address": "Đội 3 – Vạn Điểm – Phú Xuyên – Hà Nội, Hà Nội",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": "2026-06-18",
+          "endDate": "2026-12-17"
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:37.565478Z",
+    "updatedAt": "2026-07-26T11:01:37.565478Z"
+  },
+  {
+    "employeeCode": "44470",
+    "fullName": "Mai Thị Kim Oanh",
+    "taxCode": "0",
+    "dob": "2005-06-24",
+    "idNumber": "038305007944",
+    "email": "",
+    "phone": "0359203447",
+    "address": "Thôn 3, Nga Phượng, Nga Sơn, Thanh Hóa, Thanh Hóa",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": "2026-06-18",
+          "endDate": "2026-12-17"
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:37.673610Z",
+    "updatedAt": "2026-07-26T11:01:37.673610Z"
+  },
+  {
+    "employeeCode": "44955",
+    "fullName": "Nguyễn Phạm Ngọc Hân",
     "taxCode": "",
-    "dob": "1992-01-23",
-    "idNumber": "079090000010",
-    "email": "ngo.huu.trang10@example.com",
-    "phone": "0910001370",
-    "address": "25 Lê Lợi, Quận Hải Châu, Đà Nẵng",
+    "dob": "2000-09-08",
+    "idNumber": "064300009701",
+    "email": "HanNPN_CTV@tpb.com.vn",
+    "phone": "0768928611",
+    "address": "",
     "checklist": {
       "submittedIdCard": true,
       "submittedTaxCommitment": false,
-      "liquidationDate": null,
-      "submittedCV": true,
-      "submittedResidenceInfo": true,
-      "submittedDegree": false,
       "serviceContracts": [
         {
           "startDate": null,
           "endDate": null
         }
-      ]
+      ],
+      "liquidationDate": null
     },
-    "createdAt": "2022-12-08T02:00:00.000Z",
-    "updatedAt": "2022-12-08T02:00:00.000Z"
+    "createdAt": "2026-07-26T11:01:46.892368Z",
+    "updatedAt": "2026-07-26T11:01:46.892368Z"
   },
   {
-    "employeeCode": "CTV011",
-    "fullName": "Vũ Quốc Bình",
-    "taxCode": "8984872065",
-    "dob": "1993-06-15",
-    "idNumber": "079090000011",
-    "email": "vu.quoc.binh11@example.com",
-    "phone": "0910001507",
-    "address": "177 Nguyễn Huệ, Quận Ninh Kiều, Cần Thơ",
-    "checklist": {
-      "submittedIdCard": false,
-      "submittedTaxCommitment": false,
-      "liquidationDate": "2025-08-09",
-      "submittedCV": true,
-      "submittedResidenceInfo": false,
-      "submittedDegree": false,
-      "serviceContracts": [
-        {
-          "startDate": "2023-10-10",
-          "endDate": "2024-06-10"
-        }
-      ]
-    },
-    "createdAt": "2023-01-20T02:00:00.000Z",
-    "updatedAt": "2023-01-20T02:00:00.000Z"
-  },
-  {
-    "employeeCode": "CTV012",
-    "fullName": "Dương Ngọc Khánh",
-    "taxCode": "9621550582",
-    "dob": "1985-12-22",
-    "idNumber": "079090000012",
-    "email": "duong.ngoc.khanh12@example.com",
-    "phone": "0910001644",
-    "address": "6 Lê Lợi, Quận Hải Châu, Đà Nẵng",
-    "checklist": {
-      "submittedIdCard": false,
-      "submittedTaxCommitment": true,
-      "liquidationDate": null,
-      "submittedCV": true,
-      "submittedResidenceInfo": true,
-      "submittedDegree": false,
-      "serviceContracts": [
-        {
-          "startDate": "2023-08-15",
-          "endDate": null
-        }
-      ]
-    },
-    "createdAt": "2024-11-07T02:00:00.000Z",
-    "updatedAt": "2024-11-07T02:00:00.000Z"
-  },
-  {
-    "employeeCode": "CTV013",
-    "fullName": "Nguyễn Thanh An",
-    "taxCode": "8261287772",
-    "dob": "2002-01-15",
-    "idNumber": "079090000013",
-    "email": "nguyen.thanh.an13@example.com",
-    "phone": "0910001781",
-    "address": "68 Nguyễn Huệ, Quận Ninh Kiều, Cần Thơ",
-    "checklist": {
-      "submittedIdCard": false,
-      "submittedTaxCommitment": true,
-      "liquidationDate": null,
-      "submittedCV": true,
-      "submittedResidenceInfo": true,
-      "submittedDegree": false,
-      "serviceContracts": [
-        {
-          "startDate": null,
-          "endDate": null
-        }
-      ]
-    },
-    "createdAt": "2023-08-27T02:00:00.000Z",
-    "updatedAt": "2023-08-27T02:00:00.000Z"
-  },
-  {
-    "employeeCode": "CTV014",
-    "fullName": "Huỳnh Ngọc Cường",
-    "taxCode": "8079291681",
-    "dob": "1991-03-23",
-    "idNumber": "079090000014",
-    "email": "huynh.ngoc.cuong14@example.com",
-    "phone": "0910001918",
-    "address": "179 Nguyễn Trãi, Quận 1, TP. Hồ Chí Minh",
-    "checklist": {
-      "submittedIdCard": true,
-      "submittedTaxCommitment": false,
-      "liquidationDate": "2024-02-19",
-      "submittedCV": true,
-      "submittedResidenceInfo": true,
-      "submittedDegree": false,
-      "serviceContracts": [
-        {
-          "startDate": "2023-12-10",
-          "endDate": "2025-10-05"
-        }
-      ]
-    },
-    "createdAt": "2022-11-15T02:00:00.000Z",
-    "updatedAt": "2022-11-15T02:00:00.000Z"
-  },
-  {
-    "employeeCode": "CTV015",
-    "fullName": "Hoàng Thị Đạt",
+    "employeeCode": "44616",
+    "fullName": "Nguyễn Thị Hồng Anh",
     "taxCode": "",
-    "dob": "1999-10-20",
-    "idNumber": "079090000015",
-    "email": "hoang.thi.dat15@example.com",
-    "phone": "0910002055",
-    "address": "114 Trần Hưng Đạo, Quận 5, TP. Hồ Chí Minh",
+    "dob": "2005-10-25",
+    "idNumber": "064305009360",
+    "email": "AnhNTH26_CTV@tpb.com.vn",
+    "phone": "0932814567",
+    "address": "",
     "checklist": {
       "submittedIdCard": true,
       "submittedTaxCommitment": false,
-      "liquidationDate": null,
-      "submittedCV": true,
-      "submittedResidenceInfo": false,
-      "submittedDegree": false,
       "serviceContracts": [
         {
-          "startDate": "2024-09-26",
+          "startDate": null,
           "endDate": null
         }
-      ]
+      ],
+      "liquidationDate": null
     },
-    "createdAt": "2023-08-14T02:00:00.000Z",
-    "updatedAt": "2023-08-14T02:00:00.000Z"
+    "createdAt": "2026-07-26T11:01:46.997980Z",
+    "updatedAt": "2026-07-26T11:01:46.997980Z"
   },
   {
-    "employeeCode": "CTV016",
-    "fullName": "Vũ Xuân Mai",
-    "taxCode": "8298172074",
-    "dob": "1989-03-17",
-    "idNumber": "079090000016",
-    "email": "vu.xuan.mai16@example.com",
-    "phone": "0910002192",
-    "address": "144 Trần Hưng Đạo, Quận 5, TP. Hồ Chí Minh",
-    "checklist": {
-      "submittedIdCard": true,
-      "submittedTaxCommitment": true,
-      "liquidationDate": null,
-      "submittedCV": true,
-      "submittedResidenceInfo": true,
-      "submittedDegree": true,
-      "serviceContracts": [
-        {
-          "startDate": "2022-01-26",
-          "endDate": null
-        }
-      ]
-    },
-    "createdAt": "2024-09-24T02:00:00.000Z",
-    "updatedAt": "2024-09-24T02:00:00.000Z"
-  },
-  {
-    "employeeCode": "CTV017",
-    "fullName": "Phạm Anh Quân",
+    "employeeCode": "45007",
+    "fullName": "Phan Trung Quốc",
     "taxCode": "",
-    "dob": "1995-11-04",
-    "idNumber": "079090000017",
-    "email": "pham.anh.quan17@example.com",
-    "phone": "0910002329",
-    "address": "96 Trần Hưng Đạo, Quận 5, TP. Hồ Chí Minh",
-    "checklist": {
-      "submittedIdCard": true,
-      "submittedTaxCommitment": true,
-      "liquidationDate": null,
-      "submittedCV": true,
-      "submittedResidenceInfo": true,
-      "submittedDegree": false,
-      "serviceContracts": [
-        {
-          "startDate": "2023-11-27",
-          "endDate": null
-        }
-      ]
-    },
-    "createdAt": "2022-04-11T02:00:00.000Z",
-    "updatedAt": "2022-04-11T02:00:00.000Z"
-  },
-  {
-    "employeeCode": "CTV018",
-    "fullName": "Đỗ Hữu Uyên",
-    "taxCode": "8413546098",
-    "dob": "1992-04-22",
-    "idNumber": "079090000018",
-    "email": "do.huu.uyen18@example.com",
-    "phone": "0910002466",
-    "address": "5 Lý Thường Kiệt, TP. Vinh, Nghệ An",
-    "checklist": {
-      "submittedIdCard": true,
-      "submittedTaxCommitment": true,
-      "liquidationDate": null,
-      "submittedCV": true,
-      "submittedResidenceInfo": false,
-      "submittedDegree": false,
-      "serviceContracts": [
-        {
-          "startDate": "2023-11-09",
-          "endDate": null
-        }
-      ]
-    },
-    "createdAt": "2023-07-19T02:00:00.000Z",
-    "updatedAt": "2023-07-19T02:00:00.000Z"
-  },
-  {
-    "employeeCode": "CTV019",
-    "fullName": "Hoàng Xuân An",
-    "taxCode": "9263616958",
-    "dob": "1994-10-27",
-    "idNumber": "079090000019",
-    "email": "hoang.xuan.an19@example.com",
-    "phone": "0910002603",
-    "address": "168 Điện Biên Phủ, Quận Bình Thạnh, TP. Hồ Chí Minh",
+    "dob": "2004-01-29",
+    "idNumber": "082204018342",
+    "email": "QuocPT1_CTV@tpb.com.vn",
+    "phone": "0347290179",
+    "address": "",
     "checklist": {
       "submittedIdCard": true,
       "submittedTaxCommitment": false,
-      "liquidationDate": null,
-      "submittedCV": true,
-      "submittedResidenceInfo": true,
-      "submittedDegree": false,
       "serviceContracts": [
         {
           "startDate": null,
           "endDate": null
         }
-      ]
+      ],
+      "liquidationDate": null
     },
-    "createdAt": "2022-02-04T02:00:00.000Z",
-    "updatedAt": "2022-02-04T02:00:00.000Z"
+    "createdAt": "2026-07-26T11:01:47.101967Z",
+    "updatedAt": "2026-07-26T11:01:47.101967Z"
   },
   {
-    "employeeCode": "CTV020",
-    "fullName": "Ngô Hữu Linh",
-    "taxCode": "9366834125",
-    "dob": "1987-03-13",
-    "idNumber": "079090000020",
-    "email": "ngo.huu.linh20@example.com",
-    "phone": "0910002740",
-    "address": "148 Trần Hưng Đạo, Quận 5, TP. Hồ Chí Minh",
+    "employeeCode": "44665",
+    "fullName": "Hồ Việt Đức",
+    "taxCode": "",
+    "dob": "2004-07-18",
+    "idNumber": "040204001265",
+    "email": "DucHV3_CTV@tpb.com.vn",
+    "phone": "0945585797",
+    "address": "",
     "checklist": {
       "submittedIdCard": true,
-      "submittedTaxCommitment": true,
-      "liquidationDate": null,
-      "submittedCV": true,
-      "submittedResidenceInfo": true,
-      "submittedDegree": false,
-      "serviceContracts": [
-        {
-          "startDate": "2023-10-04",
-          "endDate": null
-        }
-      ]
-    },
-    "createdAt": "2024-04-05T02:00:00.000Z",
-    "updatedAt": "2024-04-05T02:00:00.000Z"
-  },
-  {
-    "employeeCode": "CTV021",
-    "fullName": "Vũ Quốc Mai",
-    "taxCode": "9253048693",
-    "dob": "1999-05-10",
-    "idNumber": "079090000021",
-    "email": "vu.quoc.mai21@example.com",
-    "phone": "0910002877",
-    "address": "102 Nguyễn Huệ, Quận Ninh Kiều, Cần Thơ",
-    "checklist": {
-      "submittedIdCard": false,
-      "submittedTaxCommitment": true,
-      "liquidationDate": null,
-      "submittedCV": true,
-      "submittedResidenceInfo": true,
-      "submittedDegree": true,
-      "serviceContracts": [
-        {
-          "startDate": "2022-11-21",
-          "endDate": null
-        }
-      ]
-    },
-    "createdAt": "2022-04-23T02:00:00.000Z",
-    "updatedAt": "2022-04-23T02:00:00.000Z"
-  },
-  {
-    "employeeCode": "CTV022",
-    "fullName": "Nguyễn Văn An",
-    "taxCode": "9003403377",
-    "dob": "1993-08-07",
-    "idNumber": "079090000022",
-    "email": "nguyen.van.an22@example.com",
-    "phone": "0910003014",
-    "address": "139 Nguyễn Trãi, Quận 1, TP. Hồ Chí Minh",
-    "checklist": {
-      "submittedIdCard": false,
       "submittedTaxCommitment": false,
-      "liquidationDate": null,
-      "submittedCV": true,
-      "submittedResidenceInfo": true,
-      "submittedDegree": true,
       "serviceContracts": [
         {
           "startDate": null,
           "endDate": null
         }
-      ]
+      ],
+      "liquidationDate": null
     },
-    "createdAt": "2024-08-27T02:00:00.000Z",
-    "updatedAt": "2024-08-27T02:00:00.000Z"
+    "createdAt": "2026-07-26T11:01:47.206175Z",
+    "updatedAt": "2026-07-26T11:01:47.206175Z"
   },
   {
-    "employeeCode": "CTV023",
-    "fullName": "Ngô Xuân Khánh",
-    "taxCode": "8001802163",
-    "dob": "1995-01-22",
-    "idNumber": "079090000023",
-    "email": "ngo.xuan.khanh23@example.com",
-    "phone": "0910003151",
-    "address": "149 Lê Lợi, Quận Hải Châu, Đà Nẵng",
-    "checklist": {
-      "submittedIdCard": false,
-      "submittedTaxCommitment": true,
-      "liquidationDate": null,
-      "submittedCV": true,
-      "submittedResidenceInfo": false,
-      "submittedDegree": false,
-      "serviceContracts": [
-        {
-          "startDate": "2024-03-11",
-          "endDate": null
-        }
-      ]
-    },
-    "createdAt": "2024-02-27T02:00:00.000Z",
-    "updatedAt": "2024-02-27T02:00:00.000Z"
-  },
-  {
-    "employeeCode": "CTV024",
-    "fullName": "Võ Anh Em",
-    "taxCode": "8340242797",
-    "dob": "1989-12-04",
-    "idNumber": "079090000024",
-    "email": "vo.anh.em24@example.com",
-    "phone": "0910003288",
-    "address": "180 Điện Biên Phủ, Quận Bình Thạnh, TP. Hồ Chí Minh",
-    "checklist": {
-      "submittedIdCard": false,
-      "submittedTaxCommitment": true,
-      "liquidationDate": "2025-09-08",
-      "submittedCV": true,
-      "submittedResidenceInfo": true,
-      "submittedDegree": false,
-      "serviceContracts": [
-        {
-          "startDate": "2023-09-24",
-          "endDate": "2025-02-12"
-        }
-      ]
-    },
-    "createdAt": "2024-08-01T02:00:00.000Z",
-    "updatedAt": "2024-08-01T02:00:00.000Z"
-  },
-  {
-    "employeeCode": "CTV025",
-    "fullName": "Ngô Ngọc Dung",
-    "taxCode": "9550872337",
-    "dob": "1998-09-10",
-    "idNumber": "079090000025",
-    "email": "ngo.ngoc.dung25@example.com",
-    "phone": "0910003425",
-    "address": "123 Lý Thường Kiệt, TP. Vinh, Nghệ An",
+    "employeeCode": "44596",
+    "fullName": "Trần Tấn Sang",
+    "taxCode": "",
+    "dob": "2003-11-28",
+    "idNumber": "072203002194",
+    "email": "SangTT6_CTV@tpb.com.vn",
+    "phone": "0917440104",
+    "address": "",
     "checklist": {
       "submittedIdCard": true,
-      "submittedTaxCommitment": true,
-      "liquidationDate": null,
-      "submittedCV": true,
-      "submittedResidenceInfo": true,
-      "submittedDegree": true,
-      "serviceContracts": [
-        {
-          "startDate": "2022-11-14",
-          "endDate": null
-        }
-      ]
-    },
-    "createdAt": "2022-12-07T02:00:00.000Z",
-    "updatedAt": "2022-12-07T02:00:00.000Z"
-  },
-  {
-    "employeeCode": "CTV026",
-    "fullName": "Ngô Anh Trang",
-    "taxCode": "9705192610",
-    "dob": "1988-10-08",
-    "idNumber": "079090000026",
-    "email": "ngo.anh.trang26@example.com",
-    "phone": "0910003562",
-    "address": "131 Lý Thường Kiệt, TP. Vinh, Nghệ An",
-    "checklist": {
-      "submittedIdCard": true,
-      "submittedTaxCommitment": true,
-      "liquidationDate": null,
-      "submittedCV": true,
-      "submittedResidenceInfo": true,
-      "submittedDegree": false,
-      "serviceContracts": [
-        {
-          "startDate": "2023-09-11",
-          "endDate": null
-        }
-      ]
-    },
-    "createdAt": "2023-03-24T02:00:00.000Z",
-    "updatedAt": "2023-03-24T02:00:00.000Z"
-  },
-  {
-    "employeeCode": "CTV027",
-    "fullName": "Phan Thị Phúc",
-    "taxCode": "9669574762",
-    "dob": "2000-10-03",
-    "idNumber": "079090000027",
-    "email": "phan.thi.phuc27@example.com",
-    "phone": "0910003699",
-    "address": "136 Lê Lợi, Quận Hải Châu, Đà Nẵng",
-    "checklist": {
-      "submittedIdCard": false,
-      "submittedTaxCommitment": true,
-      "liquidationDate": null,
-      "submittedCV": true,
-      "submittedResidenceInfo": true,
-      "submittedDegree": false,
-      "serviceContracts": [
-        {
-          "startDate": "2022-07-20",
-          "endDate": null
-        }
-      ]
-    },
-    "createdAt": "2023-04-15T02:00:00.000Z",
-    "updatedAt": "2023-04-15T02:00:00.000Z"
-  },
-  {
-    "employeeCode": "CTV028",
-    "fullName": "Hoàng Xuân Phong",
-    "taxCode": "8967942680",
-    "dob": "1986-05-28",
-    "idNumber": "079090000028",
-    "email": "hoang.xuan.phong28@example.com",
-    "phone": "0910003836",
-    "address": "147 Hai Bà Trưng, Quận Hoàn Kiếm, Hà Nội",
-    "checklist": {
-      "submittedIdCard": false,
-      "submittedTaxCommitment": true,
-      "liquidationDate": "2025-12-16",
-      "submittedCV": false,
-      "submittedResidenceInfo": true,
-      "submittedDegree": true,
-      "serviceContracts": [
-        {
-          "startDate": "2023-10-27",
-          "endDate": "2025-07-18"
-        }
-      ]
-    },
-    "createdAt": "2023-08-07T02:00:00.000Z",
-    "updatedAt": "2023-08-07T02:00:00.000Z"
-  },
-  {
-    "employeeCode": "CTV029",
-    "fullName": "Ngô Xuân Sơn",
-    "taxCode": "8868056765",
-    "dob": "1988-08-11",
-    "idNumber": "079090000029",
-    "email": "ngo.xuan.son29@example.com",
-    "phone": "0910003973",
-    "address": "80 Lý Thường Kiệt, TP. Vinh, Nghệ An",
-    "checklist": {
-      "submittedIdCard": true,
-      "submittedTaxCommitment": true,
-      "liquidationDate": null,
-      "submittedCV": false,
-      "submittedResidenceInfo": true,
-      "submittedDegree": true,
+      "submittedTaxCommitment": false,
       "serviceContracts": [
         {
           "startDate": null,
           "endDate": null
         }
-      ]
+      ],
+      "liquidationDate": null
     },
-    "createdAt": "2023-01-17T02:00:00.000Z",
-    "updatedAt": "2023-01-17T02:00:00.000Z"
+    "createdAt": "2026-07-26T11:01:47.311196Z",
+    "updatedAt": "2026-07-26T11:01:47.311196Z"
   },
   {
-    "employeeCode": "CTV030",
-    "fullName": "Đặng Quốc Uyên",
-    "taxCode": "8898847189",
-    "dob": "1997-09-24",
-    "idNumber": "079090000030",
-    "email": "dang.quoc.uyen30@example.com",
-    "phone": "0910004110",
-    "address": "77 Trần Phú, TP. Nha Trang, Khánh Hòa",
+    "employeeCode": "44970",
+    "fullName": "Nguyễn Cao Minh",
+    "taxCode": "",
+    "dob": "2002-11-30",
+    "idNumber": "095202000439",
+    "email": "MinhNC11_CTV@tpb.com.vn",
+    "phone": "0923454044",
+    "address": "",
     "checklist": {
       "submittedIdCard": true,
       "submittedTaxCommitment": false,
-      "liquidationDate": "2025-05-02",
-      "submittedCV": true,
-      "submittedResidenceInfo": false,
-      "submittedDegree": true,
       "serviceContracts": [
         {
-          "startDate": "2022-07-25",
-          "endDate": "2025-08-03"
+          "startDate": null,
+          "endDate": null
         }
-      ]
+      ],
+      "liquidationDate": null
     },
-    "createdAt": "2022-09-18T02:00:00.000Z",
-    "updatedAt": "2022-09-18T02:00:00.000Z"
+    "createdAt": "2026-07-26T11:01:47.416369Z",
+    "updatedAt": "2026-07-26T11:01:47.416369Z"
+  },
+  {
+    "employeeCode": "44618",
+    "fullName": "Trần Ngọc Thiện",
+    "taxCode": "",
+    "dob": "2003-10-25",
+    "idNumber": "075203000451",
+    "email": "ThienTN_CTV@tpb.com.vn",
+    "phone": "0937680955",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:47.520828Z",
+    "updatedAt": "2026-07-26T11:01:47.520828Z"
+  },
+  {
+    "employeeCode": "45098",
+    "fullName": "Nguyễn Minh Xuân Đạt",
+    "taxCode": "",
+    "dob": "2002-10-08",
+    "idNumber": "087202005261",
+    "email": "DatNMX_CTV@tpb.com.vn",
+    "phone": "0933884616",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:47.628657Z",
+    "updatedAt": "2026-07-26T11:01:47.628657Z"
+  },
+  {
+    "employeeCode": "44732",
+    "fullName": "Nguyễn Anh Đức",
+    "taxCode": "",
+    "dob": "2004-09-25",
+    "idNumber": "072204004326",
+    "email": "DucNA10_CTV@tpb.com.vn",
+    "phone": "0947759857",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:47.732339Z",
+    "updatedAt": "2026-07-26T11:01:47.732339Z"
+  },
+  {
+    "employeeCode": "44733",
+    "fullName": "Đặng Quốc Minh",
+    "taxCode": "",
+    "dob": "2001-10-26",
+    "idNumber": "064201012921",
+    "email": "MinhDQ9_CTV@tpb.com.vn",
+    "phone": "0964685677",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:47.836364Z",
+    "updatedAt": "2026-07-26T11:01:47.836364Z"
+  },
+  {
+    "employeeCode": "44735",
+    "fullName": "Trần Thị Kim Quyên",
+    "taxCode": "",
+    "dob": "2004-09-08",
+    "idNumber": "051304012488",
+    "email": "QuyenTTK3_C@tpb.com.vn",
+    "phone": "0375141853",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:47.944106Z",
+    "updatedAt": "2026-07-26T11:01:47.944106Z"
+  },
+  {
+    "employeeCode": "44958",
+    "fullName": "Trần Thị Kim Lý",
+    "taxCode": "",
+    "dob": "2004-10-28",
+    "idNumber": "082304011430",
+    "email": "LyTTK4_CTV@tpb.com.vn",
+    "phone": "0706821194",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:48.049386Z",
+    "updatedAt": "2026-07-26T11:01:48.049386Z"
+  },
+  {
+    "employeeCode": "44686",
+    "fullName": "Nguyễn Hữu Dương",
+    "taxCode": "",
+    "dob": "1999-03-30",
+    "idNumber": "066099014794",
+    "email": "DuongNH22_C@tpb.com.vn",
+    "phone": "0944388376",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:48.154752Z",
+    "updatedAt": "2026-07-26T11:01:48.154752Z"
+  },
+  {
+    "employeeCode": "44538",
+    "fullName": "Phan Thị Bích Huyền",
+    "taxCode": "",
+    "dob": "2004-06-21",
+    "idNumber": "066304012937",
+    "email": "HuyenPTB_CTV@tpb.com.vn",
+    "phone": "0393527777",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:48.260454Z",
+    "updatedAt": "2026-07-26T11:01:48.260454Z"
+  },
+  {
+    "employeeCode": "44492",
+    "fullName": "Lê Bích Hằng",
+    "taxCode": "",
+    "dob": "2003-09-29",
+    "idNumber": "092303002833",
+    "email": "HangLB_CTV@tpb.com.vn",
+    "phone": "0901082399",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:48.368826Z",
+    "updatedAt": "2026-07-26T11:01:48.368826Z"
+  },
+  {
+    "employeeCode": "44700",
+    "fullName": "Võ Thị Bích Hà",
+    "taxCode": "",
+    "dob": "1996-04-03",
+    "idNumber": "091196002214",
+    "email": "HaVTB_CTV@tpb.com.vn",
+    "phone": "0328271868",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:48.482598Z",
+    "updatedAt": "2026-07-26T11:01:48.482598Z"
+  },
+  {
+    "employeeCode": "44661",
+    "fullName": "Nguyễn Thị Hải Yến",
+    "taxCode": "",
+    "dob": "2004-09-01",
+    "idNumber": "040304010403",
+    "email": "YenNTH46_CTV@tpb.com.vn",
+    "phone": "0978475013",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:48.595578Z",
+    "updatedAt": "2026-07-26T11:01:48.595578Z"
+  },
+  {
+    "employeeCode": "44617",
+    "fullName": "Trần Thị Kim Loan",
+    "taxCode": "",
+    "dob": "2004-10-08",
+    "idNumber": "060304009858",
+    "email": "LoanTTK1_CTV@tpb.com.vn",
+    "phone": "0369593787",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:48.703993Z",
+    "updatedAt": "2026-07-26T11:01:48.703993Z"
+  },
+  {
+    "employeeCode": "44412",
+    "fullName": "Trần Vũ Hoài Nhi",
+    "taxCode": "",
+    "dob": "2004-09-30",
+    "idNumber": "049304011667",
+    "email": "NhiTVH_CTV@tpb.com.vn",
+    "phone": "0368076401",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:48.812421Z",
+    "updatedAt": "2026-07-26T11:01:48.812421Z"
+  },
+  {
+    "employeeCode": "44409",
+    "fullName": "Huỳnh Thị Minh Hiền",
+    "taxCode": "",
+    "dob": "2004-03-15",
+    "idNumber": "049304002414",
+    "email": "HienHTM_CTV@tpb.com.vn",
+    "phone": "0899188346",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:48.922907Z",
+    "updatedAt": "2026-07-26T11:01:48.922907Z"
+  },
+  {
+    "employeeCode": "44688",
+    "fullName": "Nguyễn Duy Đông",
+    "taxCode": "",
+    "dob": "2004-09-16",
+    "idNumber": "042204002239",
+    "email": "DongND3_CTV@tpb.com.vn",
+    "phone": "0964887033",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:49.030521Z",
+    "updatedAt": "2026-07-26T11:01:49.030521Z"
+  },
+  {
+    "employeeCode": "44963",
+    "fullName": "Nguyễn Thị Như Ý",
+    "taxCode": "",
+    "dob": "2004-07-03",
+    "idNumber": "089304014398",
+    "email": "YNTN17_CTV@tpb.com.vn",
+    "phone": "0795919127",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:49.138983Z",
+    "updatedAt": "2026-07-26T11:01:49.138983Z"
+  },
+  {
+    "employeeCode": "44494",
+    "fullName": "Nguyễn Thị Ngọc Mai",
+    "taxCode": "",
+    "dob": "2004-01-31",
+    "idNumber": "066304012505",
+    "email": "MaiNTN26_CTV@tpb.com.vn",
+    "phone": "0889388084",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:49.250488Z",
+    "updatedAt": "2026-07-26T11:01:49.250488Z"
+  },
+  {
+    "employeeCode": "44495",
+    "fullName": "Đỗ Hoàng Minh Đức",
+    "taxCode": "",
+    "dob": "2000-03-06",
+    "idNumber": "067200007025",
+    "email": "DucDHM_CTV@tpb.com.vn",
+    "phone": "0973779822",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:49.357004Z",
+    "updatedAt": "2026-07-26T11:01:49.357004Z"
+  },
+  {
+    "employeeCode": "44780",
+    "fullName": "Trần Thị Minh Hằng",
+    "taxCode": "",
+    "dob": "2004-02-23",
+    "idNumber": "056304010031",
+    "email": "HangTTM1_CTV@tpb.com.vn",
+    "phone": "0355103750",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:49.463552Z",
+    "updatedAt": "2026-07-26T11:01:49.463552Z"
+  },
+  {
+    "employeeCode": "44403",
+    "fullName": "Lê Thị Ngân",
+    "taxCode": "",
+    "dob": "2005-11-30",
+    "idNumber": "038305002283",
+    "email": "NganLT8_CTV@tpb.com.vn",
+    "phone": "0908448136",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:49.569593Z",
+    "updatedAt": "2026-07-26T11:01:49.569593Z"
+  },
+  {
+    "employeeCode": "44500",
+    "fullName": "Võ Ngọc Mỹ Tiên",
+    "taxCode": "",
+    "dob": "2002-09-12",
+    "idNumber": "083302009774",
+    "email": "TienVNM_CTV@tpb.com.vn",
+    "phone": "0934006376",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:49.678372Z",
+    "updatedAt": "2026-07-26T11:01:49.678372Z"
+  },
+  {
+    "employeeCode": "44576",
+    "fullName": "Nguyễn Tấn Đức",
+    "taxCode": "",
+    "dob": "2003-10-17",
+    "idNumber": "052203005849",
+    "email": "DucNT31_CTV@tpb.com.vn",
+    "phone": "0352003370",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:49.786764Z",
+    "updatedAt": "2026-07-26T11:01:49.786764Z"
+  },
+  {
+    "employeeCode": "44727",
+    "fullName": "Võ Thị Thanh Diệu",
+    "taxCode": "",
+    "dob": "2004-04-10",
+    "idNumber": "052304004499",
+    "email": "DieuVTT2_CTV@tpb.com.vn",
+    "phone": "0337805273",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:49.903038Z",
+    "updatedAt": "2026-07-26T11:01:49.903038Z"
+  },
+  {
+    "employeeCode": "44511",
+    "fullName": "Lê Huỳnh Ngọc Yến",
+    "taxCode": "",
+    "dob": "2003-07-01",
+    "idNumber": "052303016696",
+    "email": "YenLHN_CTV@tpb.com.vn",
+    "phone": "0702652506",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:50.015784Z",
+    "updatedAt": "2026-07-26T11:01:50.015784Z"
+  },
+  {
+    "employeeCode": "44400",
+    "fullName": "Đặng Quang Thân",
+    "taxCode": "",
+    "dob": "2004-11-08",
+    "idNumber": "051204008308",
+    "email": "ThanDQ1_CTV@tpb.com.vn",
+    "phone": "0981406367",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:50.121906Z",
+    "updatedAt": "2026-07-26T11:01:50.121906Z"
+  },
+  {
+    "employeeCode": "45099",
+    "fullName": "Trần Thanh Thiên An",
+    "taxCode": "",
+    "dob": "2004-12-08",
+    "idNumber": "079304025746",
+    "email": "AnTTT7_CTV@tpb.com.vn",
+    "phone": "0898873395",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:50.227874Z",
+    "updatedAt": "2026-07-26T11:01:50.227874Z"
+  },
+  {
+    "employeeCode": "44731",
+    "fullName": "Lê Thị Ngọc Hân",
+    "taxCode": "",
+    "dob": "2004-03-16",
+    "idNumber": "072304011786",
+    "email": "HanLTN6_CTV@tpb.com.vn",
+    "phone": "0849357993",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:50.333669Z",
+    "updatedAt": "2026-07-26T11:01:50.333669Z"
+  },
+  {
+    "employeeCode": "44493",
+    "fullName": "Lưu Quang Huy",
+    "taxCode": "",
+    "dob": "2003-05-19",
+    "idNumber": "077203001955",
+    "email": "HuyLQ17_CTV@tpb.com.vn",
+    "phone": "0329357205",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:50.446104Z",
+    "updatedAt": "2026-07-26T11:01:50.446104Z"
+  },
+  {
+    "employeeCode": "45096",
+    "fullName": "Đinh Hồ Ngọc Anh",
+    "taxCode": "",
+    "dob": "2004-12-21",
+    "idNumber": "089304001208",
+    "email": "AnhDHN_CTV@tpb.com.vn",
+    "phone": "0799966545",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:50.555500Z",
+    "updatedAt": "2026-07-26T11:01:50.555500Z"
+  },
+  {
+    "employeeCode": "45008",
+    "fullName": "Hồ Thị Ngọc Thảo",
+    "taxCode": "",
+    "dob": "2004-02-14",
+    "idNumber": "068304004692",
+    "email": "ThaoHTN2_CTV@tpb.com.vn",
+    "phone": "0784371158",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:50.666546Z",
+    "updatedAt": "2026-07-26T11:01:50.666546Z"
+  },
+  {
+    "employeeCode": "44734",
+    "fullName": "Phan Ngọc Yến Ni",
+    "taxCode": "",
+    "dob": "1995-03-16",
+    "idNumber": "046195009043",
+    "email": "NiPNY3_CTV@tpb.com.vn",
+    "phone": "0985876903",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:50.780396Z",
+    "updatedAt": "2026-07-26T11:01:50.780396Z"
+  },
+  {
+    "employeeCode": "44960",
+    "fullName": "Lê Thái Hiển",
+    "taxCode": "",
+    "dob": "2002-01-01",
+    "idNumber": "070202004625",
+    "email": "HienLT30_CTV@tpb.com.vn",
+    "phone": "0329501211",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:50.896380Z",
+    "updatedAt": "2026-07-26T11:01:50.896380Z"
+  },
+  {
+    "employeeCode": "44694",
+    "fullName": "Lê Huỳnh Lộc",
+    "taxCode": "",
+    "dob": "2001-02-03",
+    "idNumber": "070201006283",
+    "email": "LocLH1_CTV@tpb.com.vn",
+    "phone": "0886030470",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:51.003695Z",
+    "updatedAt": "2026-07-26T11:01:51.003695Z"
+  },
+  {
+    "employeeCode": "44498",
+    "fullName": "Nguyễn Phạm Lệ Quyên",
+    "taxCode": "",
+    "dob": "2004-04-12",
+    "idNumber": "066304013648",
+    "email": "QuyenNPL_CTV@tpb.com.vn",
+    "phone": "0389828782",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:51.113516Z",
+    "updatedAt": "2026-07-26T11:01:51.113516Z"
+  },
+  {
+    "employeeCode": "44499",
+    "fullName": "H Dram Niê",
+    "taxCode": "",
+    "dob": "2004-04-07",
+    "idNumber": "066304012203",
+    "email": "NieHD1_CTV@tpb.com.vn",
+    "phone": "0356055701",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:51.233004Z",
+    "updatedAt": "2026-07-26T11:01:51.233004Z"
+  },
+  {
+    "employeeCode": "44497",
+    "fullName": "RČom H Li sa",
+    "taxCode": "",
+    "dob": "2003-06-10",
+    "idNumber": "066303015712",
+    "email": "SaRHL_CTV@tpb.com.vn",
+    "phone": "0392197011",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:51.342007Z",
+    "updatedAt": "2026-07-26T11:01:51.342007Z"
+  },
+  {
+    "employeeCode": "45005",
+    "fullName": "Nguyễn Bảo Hưng",
+    "taxCode": "",
+    "dob": "2003-11-08",
+    "idNumber": "066203011454",
+    "email": "HungNB2_CTV@tpb.com.vn",
+    "phone": "0868254383",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:51.451317Z",
+    "updatedAt": "2026-07-26T11:01:51.451317Z"
+  },
+  {
+    "employeeCode": "45006",
+    "fullName": "Hồ Thị Thu Huyền",
+    "taxCode": "",
+    "dob": "2004-10-28",
+    "idNumber": "066304016494",
+    "email": "HuyenHTT7_C@tpb.com.vn",
+    "phone": "0339472421",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:51.560716Z",
+    "updatedAt": "2026-07-26T11:01:51.560716Z"
+  },
+  {
+    "employeeCode": "44701",
+    "fullName": "Nguyễn Ngọc Hồ",
+    "taxCode": "",
+    "dob": "2004-10-10",
+    "idNumber": "089204017814",
+    "email": "HoNN10_CTV@tpb.com.vn",
+    "phone": "0392177006",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:51.670022Z",
+    "updatedAt": "2026-07-26T11:01:51.670022Z"
+  },
+  {
+    "employeeCode": "44566",
+    "fullName": "Võ Thị Quỳnh Nhi",
+    "taxCode": "",
+    "dob": "2004-09-20",
+    "idNumber": "049304008821",
+    "email": "NhiVTQ_CTV@tpb.com.vn",
+    "phone": "0775502536",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:51.781189Z",
+    "updatedAt": "2026-07-26T11:01:51.781189Z"
+  },
+  {
+    "employeeCode": "44692",
+    "fullName": "Lê Huỳnh Đức",
+    "taxCode": "",
+    "dob": "2004-12-18",
+    "idNumber": "054204006644",
+    "email": "DucLH22_CTV@tpb.com.vn",
+    "phone": "0333187448",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:51.896907Z",
+    "updatedAt": "2026-07-26T11:01:51.896907Z"
+  },
+  {
+    "employeeCode": "45021",
+    "fullName": "Lê Nguyễn Minh Tuệ",
+    "taxCode": "",
+    "dob": "2001-10-29",
+    "idNumber": "087301009714",
+    "email": "TueLNM_CTV@tpb.com.vn",
+    "phone": "0399779748",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:52.118377Z",
+    "updatedAt": "2026-07-26T11:01:52.118377Z"
+  },
+  {
+    "employeeCode": "45022",
+    "fullName": "Nguyễn Đặng Thiên Kim",
+    "taxCode": "",
+    "dob": "2003-09-15",
+    "idNumber": "060303010783",
+    "email": "KimNDT1_CTV@tpb.com.vn",
+    "phone": "0389635980",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:52.322309Z",
+    "updatedAt": "2026-07-26T11:01:52.322309Z"
+  },
+  {
+    "employeeCode": "44595",
+    "fullName": "Bùi Thị Xuân Uyên",
+    "taxCode": "",
+    "dob": "2003-03-21",
+    "idNumber": "072303002417",
+    "email": "UyenBTX_CTV@tpb.com.vn",
+    "phone": "0937652551",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:52.429113Z",
+    "updatedAt": "2026-07-26T11:01:52.429113Z"
+  },
+  {
+    "employeeCode": "44622",
+    "fullName": "Nguyễn Thanh Hà",
+    "taxCode": "",
+    "dob": "2004-12-04",
+    "idNumber": "026304006043",
+    "email": "HaNT80_CTV@tpb.com.vn",
+    "phone": "0382797622",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:52.534763Z",
+    "updatedAt": "2026-07-26T11:01:52.534763Z"
+  },
+  {
+    "employeeCode": "44954",
+    "fullName": "Nguyễn Thị Hồng Vân",
+    "taxCode": "",
+    "dob": "2004-09-14",
+    "idNumber": "049304007398",
+    "email": "VanNTH23_CTV@tpb.com.vn",
+    "phone": "0337660738",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:52.640361Z",
+    "updatedAt": "2026-07-26T11:01:52.640361Z"
+  },
+  {
+    "employeeCode": "44737",
+    "fullName": "Mai Ngọc Uyển Nhi",
+    "taxCode": "",
+    "dob": "2004-06-05",
+    "idNumber": "068304006101",
+    "email": "NhiMNU_CTV@tpb.com.vn",
+    "phone": "0784688204",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:52.747395Z",
+    "updatedAt": "2026-07-26T11:01:52.747395Z"
+  },
+  {
+    "employeeCode": "44594",
+    "fullName": "Thiều Ngọc Thủy Tiên",
+    "taxCode": "",
+    "dob": "2004-05-10",
+    "idNumber": "054304007022",
+    "email": "TienTNT_CTV@tpb.com.vn",
+    "phone": "0356694819",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:52.855577Z",
+    "updatedAt": "2026-07-26T11:01:52.855577Z"
+  },
+  {
+    "employeeCode": "44593",
+    "fullName": "Đỗ Thị Tuyết Nhi",
+    "taxCode": "",
+    "dob": "2004-11-22",
+    "idNumber": "070304005357",
+    "email": "NhiDTT2_CTV@tpb.com.vn",
+    "phone": "0348933880",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:52.964769Z",
+    "updatedAt": "2026-07-26T11:01:52.964769Z"
+  },
+  {
+    "employeeCode": "44597",
+    "fullName": "Nguyễn Thị Huyền Nhi",
+    "taxCode": "",
+    "dob": "2004-01-16",
+    "idNumber": "054304009169",
+    "email": "NhiNTH8_CTV@tpb.com.vn",
+    "phone": "0354204696",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:53.078130Z",
+    "updatedAt": "2026-07-26T11:01:53.078130Z"
+  },
+  {
+    "employeeCode": "44699",
+    "fullName": "Nguyễn Vũ Minh Quân",
+    "taxCode": "",
+    "dob": "2004-01-16",
+    "idNumber": "056204011546",
+    "email": "QuanNVM_CTV@tpb.com.vn",
+    "phone": "0776713922",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:53.186570Z",
+    "updatedAt": "2026-07-26T11:01:53.186570Z"
+  },
+  {
+    "employeeCode": "44404",
+    "fullName": "Tiêu Uyển Đình",
+    "taxCode": "",
+    "dob": "2004-12-25",
+    "idNumber": "095304007287",
+    "email": "DinhTU_CTV@tpb.com.vn",
+    "phone": "0378308141",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:53.293194Z",
+    "updatedAt": "2026-07-26T11:01:53.293194Z"
+  },
+  {
+    "employeeCode": "44421",
+    "fullName": "Nguyễn Thị Mỹ Duyên",
+    "taxCode": "",
+    "dob": "2004-10-14",
+    "idNumber": "089304004210",
+    "email": "DuyenNTM18_C@tpb.com.vn",
+    "phone": "0366162936",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:53.401477Z",
+    "updatedAt": "2026-07-26T11:01:53.401477Z"
+  },
+  {
+    "employeeCode": "44781",
+    "fullName": "Ngô Gia Bảo",
+    "taxCode": "",
+    "dob": "2002-11-17",
+    "idNumber": "091202009762",
+    "email": "BaoNG6_CTV@tpb.com.vn",
+    "phone": "0923898468",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:53.514857Z",
+    "updatedAt": "2026-07-26T11:01:53.514857Z"
+  },
+  {
+    "employeeCode": "44570",
+    "fullName": "Trần Thanh Nhàn",
+    "taxCode": "",
+    "dob": "1999-12-10",
+    "idNumber": "060099010638",
+    "email": "NhanTT10_CTV@tpb.com.vn",
+    "phone": "0399258005",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:53.628601Z",
+    "updatedAt": "2026-07-26T11:01:53.628601Z"
+  },
+  {
+    "employeeCode": "44681",
+    "fullName": "Đinh Thị Thảo Trang",
+    "taxCode": "",
+    "dob": "2004-12-12",
+    "idNumber": "052304004521",
+    "email": "TrangDTT36_C@tpb.com.vn",
+    "phone": "0364975022",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:53.738686Z",
+    "updatedAt": "2026-07-26T11:01:53.738686Z"
+  },
+  {
+    "employeeCode": "44452",
+    "fullName": "Nguyễn Quang Khải",
+    "taxCode": "",
+    "dob": "2004-09-05",
+    "idNumber": "083204007572",
+    "email": "KhaiNQ3_CTV@tpb.com.vn",
+    "phone": "0333857429",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:53.846306Z",
+    "updatedAt": "2026-07-26T11:01:53.846306Z"
+  },
+  {
+    "employeeCode": "45029",
+    "fullName": "Trương Thị Mai Anh",
+    "taxCode": "",
+    "dob": "2004-01-24",
+    "idNumber": "036304000059",
+    "email": "AnhTTM13_CTV@tpb.com.vn",
+    "phone": "0963699306",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:53.965385Z",
+    "updatedAt": "2026-07-26T11:01:53.965385Z"
+  },
+  {
+    "employeeCode": "44662",
+    "fullName": "Lê Thị Anh Thảo",
+    "taxCode": "",
+    "dob": "2004-12-02",
+    "idNumber": "054304000945",
+    "email": "ThaoLTA1_CTV@tpb.com.vn",
+    "phone": "0374656298",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:54.074316Z",
+    "updatedAt": "2026-07-26T11:01:54.074316Z"
+  },
+  {
+    "employeeCode": "44663",
+    "fullName": "Hồ Thị Thanh Nhã",
+    "taxCode": "",
+    "dob": "2004-05-07",
+    "idNumber": "054304000821",
+    "email": "NhaHTT_CTV@tpb.com.vn",
+    "phone": "0865207153",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:54.184052Z",
+    "updatedAt": "2026-07-26T11:01:54.184052Z"
+  },
+  {
+    "employeeCode": "44664",
+    "fullName": "Lương Thị Ngọc Châu",
+    "taxCode": "",
+    "dob": "1999-11-23",
+    "idNumber": "054199008277",
+    "email": "ChauLTN1_CTV@tpb.com.vn",
+    "phone": "0383935552",
+    "address": "",
+    "checklist": {
+      "submittedIdCard": true,
+      "submittedTaxCommitment": false,
+      "serviceContracts": [
+        {
+          "startDate": null,
+          "endDate": null
+        }
+      ],
+      "liquidationDate": null
+    },
+    "createdAt": "2026-07-26T11:01:54.289286Z",
+    "updatedAt": "2026-07-26T11:01:54.289286Z"
   }
 ]

@@ -1,8 +1,9 @@
 import os
 from datetime import date, datetime, timezone
 from io import BytesIO
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
 from fastapi.responses import FileResponse, StreamingResponse
+from urllib.parse import quote
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
@@ -13,7 +14,7 @@ from app.core.database import get_db
 from app.core.logging import get_logger
 from app.core.security import get_current_user
 from app.models.collaborator import CollaboratorCreate, CollaboratorUpdate, CollaboratorResponse
-from app.core.s3 import upload_to_s3
+from app.core.s3 import upload_to_s3, get_s3_client
 from app.core.config import settings
 
 
@@ -38,9 +39,6 @@ LIQUIDATION_DATE_LABEL = "Biên bản thanh lí"
 CHECKLIST_COLUMNS = [
     ("CCCD", "submittedIdCard"),
     ("Cam kết thuế", "submittedTaxCommitment"),
-    ("CV", "submittedCV"),
-    ("Thông tin cư trú", "submittedResidenceInfo"),
-    ("Bằng cấp", "submittedDegree"),
 ]
 
 # (Tên cột trong file Excel, tên field text tương ứng ở hồ sơ CTV) - dùng khi cần tạo mới CTV từ file import
@@ -176,9 +174,6 @@ async def export_collaborators(db=Depends(get_db), current_user: dict = Depends(
             "Đã nộp" if checklist.get("submittedIdCard") else "",
             "Đã nộp" if checklist.get("submittedTaxCommitment") else "",
             checklist.get("liquidationDate") or "",
-            "Đã nộp" if checklist.get("submittedCV") else "",
-            "Đã nộp" if checklist.get("submittedResidenceInfo") else "",
-            "Đã nộp" if checklist.get("submittedDegree") else "",
         ]
 
         for col_idx, val in enumerate(row_values, start=1):
@@ -187,7 +182,7 @@ async def export_collaborators(db=Depends(get_db), current_user: dict = Depends(
             cell.border = thin_border
 
             # Alignment formatting
-            if col_idx in [1, 2, 4, 5, 6, 8, 10, 11, 12, 13, 14, 15, 16, 17]:
+            if col_idx in [1, 2, 4, 5, 6, 8, 10, 11, 12, 13, 14]:
                 cell.alignment = Alignment(horizontal="center", vertical="center")
             else:
                 cell.alignment = Alignment(horizontal="left", vertical="center")
@@ -197,7 +192,7 @@ async def export_collaborators(db=Depends(get_db), current_user: dict = Depends(
 
     # Clear remaining rows in the template if they are beyond our data rows
     for r in range(row_idx, ws.max_row + 1):
-        for c in range(1, 18):
+        for c in range(1, 15):
             cell = ws.cell(row=r, column=c)
             cell.value = None
             cell.border = Border()
@@ -580,3 +575,142 @@ async def delete_collaborator(employee_code: str, db=Depends(get_db), current_us
         message=f"{full_name} xóa thành công hồ sơ cộng tác viên mã {employee_code}",
     )
     return None
+
+import re
+
+def _extract_employee_code(filename: str) -> str | None:
+    """Extract employee code (e.g. CTV001 or 43028) from filename."""
+    base_name = os.path.splitext(filename)[0]
+    m = re.search(r'(CTV\d+)', base_name, re.IGNORECASE)
+    if m:
+        return m.group(1).upper()
+    matches = re.findall(r'\d{3,}', base_name)
+    if matches:
+        return matches[-1]
+    matches = re.findall(r'\d+', base_name)
+    return matches[-1] if matches else None
+
+@router.post("/documents/upload")
+async def upload_document(
+    file: UploadFile = File(...),
+    doc_type: str = Form(...),
+    db = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Upload a document (ID Card, Service Contract, Tax Commitment, Liquidation) for a collaborator."""
+    if doc_type not in ("idCard", "serviceContract", "taxCommitment", "liquidation"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Loại hồ sơ '{doc_type}' không hợp lệ"
+        )
+
+    employee_code = _extract_employee_code(file.filename)
+    if not employee_code:
+        return {
+            "filename": file.filename,
+            "status": "fail",
+            "message": f"Không tìm thấy mã cộng tác viên trong tên file '{file.filename}'",
+            "employeeCode": None
+        }
+
+    collaborator = await db[COLLECTION].find_one({"_id": employee_code})
+    if not collaborator:
+        return {
+            "filename": file.filename,
+            "status": "fail",
+            "message": f"Không tìm thấy cộng tác viên với mã '{employee_code}'",
+            "employeeCode": employee_code
+        }
+
+    content = await file.read()
+    timestamp = int(datetime.now().timestamp())
+    s3_key = f"documents/{employee_code}_{doc_type}_{timestamp}_{file.filename}"
+
+    try:
+        upload_to_s3(content, s3_key)
+    except Exception as e:
+        return {
+            "filename": file.filename,
+            "status": "fail",
+            "message": f"Lỗi upload S3: {str(e)}",
+            "employeeCode": employee_code
+        }
+
+    update_fields = {
+        f"checklist.{doc_type}File": s3_key,
+        "updatedAt": _now()
+    }
+    if doc_type == "idCard":
+        update_fields["checklist.submittedIdCard"] = True
+    elif doc_type == "taxCommitment":
+        update_fields["checklist.submittedTaxCommitment"] = True
+
+    await db[COLLECTION].update_one({"_id": employee_code}, {"$set": update_fields})
+
+    full_name = _actor_name(current_user)
+    username = current_user.get("username", "")
+    await record_activity(
+        db, action="upload_collaborator_document", result="success", full_name=full_name, username=username,
+        message=f"{full_name} đã upload tài liệu {doc_type} cho cộng tác viên {employee_code}",
+    )
+
+    return {
+        "filename": file.filename,
+        "status": "success",
+        "message": f"Tải lên và cập nhật hồ sơ CTV {employee_code} thành công",
+        "employeeCode": employee_code
+    }
+
+@router.get("/{employee_code}/documents/{doc_type}/download")
+async def download_collaborator_document(
+    employee_code: str,
+    doc_type: str,
+    db = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Download a collaborator document from S3 MinIO."""
+    if doc_type not in ("idCard", "serviceContract", "taxCommitment", "liquidation"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Loại hồ sơ '{doc_type}' không hợp lệ"
+        )
+
+    collaborator = await db[COLLECTION].find_one({"_id": employee_code})
+    if not collaborator:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Không tìm thấy cộng tác viên với mã '{employee_code}'"
+        )
+
+    checklist = collaborator.get("checklist", {})
+    s3_key = checklist.get(f"{doc_type}File")
+    if not s3_key:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Không tìm thấy tệp tin {doc_type} cho cộng tác viên này"
+        )
+
+    parts = s3_key.split("_", 3)
+    original_filename = parts[-1] if len(parts) > 3 else f"{doc_type}_document"
+
+    try:
+        s3 = get_s3_client()
+        response = s3.get_object(Bucket=settings.S3_BUCKET, Key=s3_key)
+
+        def iter_chunks():
+            for chunk in response["Body"].iter_chunks(chunk_size=1024 * 1024):
+                yield chunk
+
+        return StreamingResponse(
+            iter_chunks(),
+            media_type=response.get("ContentType", "application/octet-stream"),
+            headers={
+                "Content-Disposition": f"attachment; filename*=UTF-8''{quote(original_filename)}"
+            }
+        )
+    except Exception as e:
+        logger.error(f"Lỗi khi tải file từ S3 cho CTV={employee_code}, doc_type={doc_type}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Không thể tải file từ S3 MinIO"
+        )

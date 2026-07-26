@@ -14,9 +14,10 @@ class Checklist(BaseModel):
     )
     submittedTaxCommitment: bool = False
     liquidationDate: Optional[str] = None
-    submittedCV: bool = False
-    submittedResidenceInfo: bool = False
-    submittedDegree: bool = False
+    idCardFile: Optional[str] = None
+    serviceContractFile: Optional[str] = None
+    taxCommitmentFile: Optional[str] = None
+    liquidationFile: Optional[str] = None
 
 class CollaboratorBase(BaseModel):
     employeeCode: str
@@ -54,10 +55,7 @@ class CollaboratorResponse(CollaboratorBase):
                     "submittedIdCard": True,
                     "serviceContracts": [{"startDate": None, "endDate": None}],
                     "submittedTaxCommitment": False,
-                    "liquidationDate": None,
-                    "submittedCV": True,
-                    "submittedResidenceInfo": True,
-                    "submittedDegree": True
+                    "liquidationDate": None
                 },
                 "createdAt": "2024-12-15T02:00:00.000Z",
                 "updatedAt": "2024-12-15T02:00:00.000Z"
