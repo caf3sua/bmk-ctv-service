@@ -12,6 +12,7 @@ from typing import List
 from app.core.activity_log import record_activity
 from app.core.database import get_db
 from app.core.logging import get_logger
+from pydantic import BaseModel
 from app.core.security import get_current_user
 from app.models.collaborator import CollaboratorCreate, CollaboratorUpdate, CollaboratorResponse
 from app.core.s3 import upload_to_s3, get_s3_client
@@ -589,6 +590,121 @@ def _extract_employee_code(filename: str) -> str | None:
         return matches[-1]
     matches = re.findall(r'\d+', base_name)
     return matches[-1] if matches else None
+
+class UploadUrlRequest(BaseModel):
+    filename: str
+    doc_type: str
+
+class UploadConfirmRequest(BaseModel):
+    filename: str
+    doc_type: str
+    employee_code: str
+    s3_key: str
+
+@router.post("/documents/upload-url")
+async def get_upload_url(
+    req: UploadUrlRequest,
+    db = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Generate a presigned S3 URL for uploading a document."""
+    if req.doc_type not in ("idCard", "serviceContract", "taxCommitment", "liquidation"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Loại hồ sơ '{req.doc_type}' không hợp lệ"
+        )
+
+    employee_code = _extract_employee_code(req.filename)
+    if not employee_code:
+        return {
+            "filename": req.filename,
+            "status": "fail",
+            "message": f"Không tìm thấy mã cộng tác viên trong tên file '{req.filename}'",
+            "employeeCode": None
+        }
+
+    collaborator = await db[COLLECTION].find_one({"_id": employee_code})
+    if not collaborator:
+        return {
+            "filename": req.filename,
+            "status": "fail",
+            "message": f"Không tìm thấy cộng tác viên với mã '{employee_code}'",
+            "employeeCode": employee_code
+        }
+
+    timestamp = int(datetime.now().timestamp())
+    s3_key = f"documents/{employee_code}_{req.doc_type}_{timestamp}_{req.filename}"
+
+    try:
+        s3 = get_s3_client()
+        upload_url = s3.generate_presigned_url(
+            ClientMethod="put_object",
+            Params={
+                "Bucket": settings.S3_BUCKET,
+                "Key": s3_key
+            },
+            ExpiresIn=3600
+        )
+        return {
+            "filename": req.filename,
+            "status": "success",
+            "uploadUrl": upload_url,
+            "s3Key": s3_key,
+            "employeeCode": employee_code
+        }
+    except Exception as e:
+        logger.error(f"Lỗi generate presigned URL cho S3: {str(e)}")
+        return {
+            "filename": req.filename,
+            "status": "fail",
+            "message": f"Lỗi tạo đường dẫn tải lên: {str(e)}",
+            "employeeCode": employee_code
+        }
+
+@router.post("/documents/upload-confirm")
+async def confirm_upload(
+    req: UploadConfirmRequest,
+    db = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Confirm a successful upload and update the collaborator checklist."""
+    if req.doc_type not in ("idCard", "serviceContract", "taxCommitment", "liquidation"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Loại hồ sơ '{req.doc_type}' không hợp lệ"
+        )
+
+    collaborator = await db[COLLECTION].find_one({"_id": req.employee_code})
+    if not collaborator:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Không tìm thấy cộng tác viên với mã '{req.employee_code}'"
+        )
+
+    update_fields = {
+        f"checklist.{req.doc_type}File": req.s3_key,
+        "updatedAt": _now()
+    }
+    if req.doc_type == "idCard":
+        update_fields["checklist.submittedIdCard"] = True
+    elif req.doc_type == "taxCommitment":
+        update_fields["checklist.submittedTaxCommitment"] = True
+
+    await db[COLLECTION].update_one({"_id": req.employee_code}, {"$set": update_fields})
+
+    full_name = _actor_name(current_user)
+    username = current_user.get("username", "")
+    await record_activity(
+        db, action="upload_collaborator_document", result="success", full_name=full_name, username=username,
+        message=f"{full_name} đã upload tài liệu {req.doc_type} cho cộng tác viên {req.employee_code}",
+    )
+
+    return {
+        "filename": req.filename,
+        "status": "success",
+        "message": f"Tải lên và cập nhật hồ sơ CTV {req.employee_code} thành công",
+        "employeeCode": req.employee_code
+    }
 
 @router.post("/documents/upload")
 async def upload_document(
