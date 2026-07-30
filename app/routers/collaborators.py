@@ -314,7 +314,13 @@ async def import_collaborators(
 
             checklist_values = {}
             if employee_code not in checklist_status_by_emp:
-                checklist_status_by_emp[employee_code] = {}
+                if existing:
+                    db_checklist = existing.get("checklist") or {}
+                    checklist_status_by_emp[employee_code] = {
+                        field: db_checklist.get(field, False) for field, _ in CHECKLIST_COLUMNS
+                    }
+                else:
+                    checklist_status_by_emp[employee_code] = {}
 
             for field, col_idx in column_indices.items():
                 value = row[col_idx] if col_idx < len(row) else None
@@ -348,13 +354,28 @@ async def import_collaborators(
                     contracts = existing.get("checklist", {}).get("serviceContracts") or []
                     last_contract = dict(contracts[-1]) if contracts and isinstance(contracts[-1], dict) else {}
                     if start_val is not _UNSET:
-                        last_contract["startDate"] = start_val
+                        if start_val is not None or not last_contract.get("startDate"):
+                            last_contract["startDate"] = start_val
                     if end_val is not _UNSET:
-                        last_contract["endDate"] = end_val
+                        if end_val is not None or not last_contract.get("endDate"):
+                            last_contract["endDate"] = end_val
                     updates["checklist.serviceContracts"] = (contracts[:-1] if contracts else []) + [last_contract]
 
                 if liquidation_val is not _UNSET:
-                    updates["checklist.liquidationDate"] = liquidation_val
+                    if liquidation_val is not None or not existing.get("checklist", {}).get("liquidationDate"):
+                        updates["checklist.liquidationDate"] = liquidation_val
+
+                # Cập nhật thông tin hồ sơ nếu có giá trị mới trong dòng hiện tại
+                for label, field in PROFILE_TEXT_COLUMNS:
+                    idx = profile_indices.get(field)
+                    val = _cell_str(row, idx)
+                    if val:
+                        updates[field] = val
+
+                if dob_idx is not None:
+                    dob_val = parse_cell_date(dob_idx)
+                    if dob_val is not _UNSET and dob_val is not None:
+                        updates["dob"] = dob_val
 
                 updates["updatedAt"] = _now()
                 await db[COLLECTION].update_one({"_id": employee_code}, {"$set": updates})
