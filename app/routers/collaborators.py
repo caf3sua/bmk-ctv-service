@@ -663,7 +663,8 @@ async def get_upload_url(
         }
 
     timestamp = int(datetime.now().timestamp())
-    s3_key = f"documents/{employee_code}_{req.doc_type}_{timestamp}_{req.filename}"
+    yyyyMM = datetime.now().strftime("%Y%m")
+    s3_key = f"documents/contracts/{yyyyMM}/{employee_code}_{req.doc_type}_{timestamp}_{req.filename}"
 
     try:
         s3 = get_s3_client()
@@ -765,7 +766,8 @@ async def upload_document(
 
     content = await file.read()
     timestamp = int(datetime.now().timestamp())
-    s3_key = f"documents/{employee_code}_{doc_type}_{timestamp}_{file.filename}"
+    yyyyMM = datetime.now().strftime("%Y%m")
+    s3_key = f"documents/contracts/{yyyyMM}/{employee_code}_{doc_type}_{timestamp}_{file.filename}"
 
     try:
         upload_to_s3(content, s3_key)
