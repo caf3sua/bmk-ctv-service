@@ -297,6 +297,7 @@ async def import_collaborators(
         updated: List[str] = []
         created: List[str] = []
         date_errors: List[str] = []
+        checklist_status_by_emp = {}
 
         for current_row_num, row in enumerate(rows[DATA_START_ROW - 1 :], start=DATA_START_ROW):
             if row is None or all(cell in (None, "") for cell in row):
@@ -312,9 +313,17 @@ async def import_collaborators(
             existing = await db[COLLECTION].find_one({"_id": employee_code})
 
             checklist_values = {}
+            if employee_code not in checklist_status_by_emp:
+                checklist_status_by_emp[employee_code] = {}
+
             for field, col_idx in column_indices.items():
                 value = row[col_idx] if col_idx < len(row) else None
-                checklist_values[field] = value is not None and str(value).strip() != ""
+                is_checked = value is not None and str(value).strip() != ""
+                if field in checklist_status_by_emp[employee_code]:
+                    checklist_status_by_emp[employee_code][field] = checklist_status_by_emp[employee_code][field] or is_checked
+                else:
+                    checklist_status_by_emp[employee_code][field] = is_checked
+                checklist_values[field] = checklist_status_by_emp[employee_code][field]
 
             def parse_cell_date(idx):
                 if idx is None or idx >= len(row):
@@ -685,11 +694,6 @@ async def confirm_upload(
         f"checklist.{req.doc_type}File": req.s3_key,
         "updatedAt": _now()
     }
-    if req.doc_type == "idCard":
-        update_fields["checklist.submittedIdCard"] = True
-    elif req.doc_type == "taxCommitment":
-        update_fields["checklist.submittedTaxCommitment"] = True
-
     await db[COLLECTION].update_one({"_id": req.employee_code}, {"$set": update_fields})
 
     full_name = _actor_name(current_user)
@@ -756,11 +760,6 @@ async def upload_document(
         f"checklist.{doc_type}File": s3_key,
         "updatedAt": _now()
     }
-    if doc_type == "idCard":
-        update_fields["checklist.submittedIdCard"] = True
-    elif doc_type == "taxCommitment":
-        update_fields["checklist.submittedTaxCommitment"] = True
-
     await db[COLLECTION].update_one({"_id": employee_code}, {"$set": update_fields})
 
     full_name = _actor_name(current_user)
