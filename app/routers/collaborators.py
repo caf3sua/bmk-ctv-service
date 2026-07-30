@@ -8,7 +8,7 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.utils.datetime import from_excel
-from typing import List
+from typing import List, Optional
 from app.core.activity_log import record_activity
 from app.core.database import get_db
 from app.core.logging import get_logger
@@ -36,10 +36,10 @@ START_DATE_LABEL = "Ngày bắt đầu"
 END_DATE_LABEL = "Ngày kết thúc"
 LIQUIDATION_DATE_LABEL = "Biên bản thanh lí"
 
-# (Tên cột trong file Excel, tên field boolean tương ứng trong checklist)
+# (Tên cột trong file Excel, tên field key tương ứng trong checklist)
 CHECKLIST_COLUMNS = [
-    ("CCCD", "submittedIdCard"),
-    ("Cam kết thuế", "submittedTaxCommitment"),
+    ("CCCD", "cccd"),
+    ("Cam kết thuế", "ckt"),
 ]
 
 # (Tên cột trong file Excel, tên field text tương ứng ở hồ sơ CTV) - dùng khi cần tạo mới CTV từ file import
@@ -144,11 +144,14 @@ async def export_collaborators(db=Depends(get_db), current_user: dict = Depends(
     stt = 1
 
     async for doc in cursor:
-        checklist = doc.get("checklist")
-        if not isinstance(checklist, dict):
-            checklist = {}
+        checklist = doc.get("checklist") or {}
+        
+        cccd = checklist.get("cccd") or {}
+        ckt = checklist.get("ckt") or {}
+        hddv = checklist.get("hddv") or {}
+        bbtl = checklist.get("bbtl") or {}
 
-        contracts = checklist.get("serviceContracts", [])
+        contracts = hddv.get("contract_date", [])
         start_date = ""
         end_date = ""
         if contracts:
@@ -172,9 +175,9 @@ async def export_collaborators(db=Depends(get_db), current_user: dict = Depends(
             doc.get("address", ""),
             start_date,
             end_date,
-            "Đã nộp" if checklist.get("submittedIdCard") else "",
-            "Đã nộp" if checklist.get("submittedTaxCommitment") else "",
-            checklist.get("liquidationDate") or "",
+            "Đã nộp" if cccd.get("checked") else "",
+            "Đã nộp" if ckt.get("checked") else "",
+            bbtl.get("date") or "",
         ]
 
         for col_idx, val in enumerate(row_values, start=1):
@@ -317,7 +320,8 @@ async def import_collaborators(
                 if existing:
                     db_checklist = existing.get("checklist") or {}
                     checklist_status_by_emp[employee_code] = {
-                        field: db_checklist.get(field, False) for field, _ in CHECKLIST_COLUMNS
+                        field: db_checklist.get(field, {}).get("checked", False) if isinstance(db_checklist.get(field), dict) else False
+                        for field, _ in CHECKLIST_COLUMNS
                     }
                 else:
                     checklist_status_by_emp[employee_code] = {}
@@ -348,10 +352,13 @@ async def import_collaborators(
             liquidation_val = parse_cell_date(liquidation_idx)
 
             if existing:
-                updates = {f"checklist.{field}": val for field, val in checklist_values.items()}
+                updates = {}
+                for field, val in checklist_values.items():
+                    updates[f"checklist.{field}.checked"] = val
 
                 if start_date_idx is not None or end_date_idx is not None:
-                    contracts = existing.get("checklist", {}).get("serviceContracts") or []
+                    hddv = existing.get("checklist", {}).get("hddv") or {}
+                    contracts = hddv.get("contract_date") or []
                     last_contract = dict(contracts[-1]) if contracts and isinstance(contracts[-1], dict) else {}
                     if start_val is not _UNSET:
                         if start_val is not None or not last_contract.get("startDate"):
@@ -359,11 +366,12 @@ async def import_collaborators(
                     if end_val is not _UNSET:
                         if end_val is not None or not last_contract.get("endDate"):
                             last_contract["endDate"] = end_val
-                    updates["checklist.serviceContracts"] = (contracts[:-1] if contracts else []) + [last_contract]
+                    updates["checklist.hddv.contract_date"] = (contracts[:-1] if contracts else []) + [last_contract]
 
                 if liquidation_val is not _UNSET:
-                    if liquidation_val is not None or not existing.get("checklist", {}).get("liquidationDate"):
-                        updates["checklist.liquidationDate"] = liquidation_val
+                    bbtl = existing.get("checklist", {}).get("bbtl") or {}
+                    if liquidation_val is not None or not bbtl.get("date"):
+                        updates["checklist.bbtl.date"] = liquidation_val
 
                 # Cập nhật thông tin hồ sơ nếu có giá trị mới trong dòng hiện tại
                 for label, field in PROFILE_TEXT_COLUMNS:
@@ -394,12 +402,25 @@ async def import_collaborators(
                     "phone": _cell_str(row, profile_indices.get("phone")),
                     "address": _cell_str(row, profile_indices.get("address")),
                     "checklist": {
-                        **checklist_values,
-                        "serviceContracts": [{
-                            "startDate": None if start_val is _UNSET else start_val,
-                            "endDate": None if end_val is _UNSET else end_val,
-                        }],
-                        "liquidationDate": None if liquidation_val is _UNSET else liquidation_val,
+                        "cccd": {
+                            "checked": checklist_values.get("cccd", False),
+                            "file": None
+                        },
+                        "ckt": {
+                            "checked": checklist_values.get("ckt", False),
+                            "file": None
+                        },
+                        "hddv": {
+                            "contract_date": [{
+                                "startDate": None if start_val is _UNSET else start_val,
+                                "endDate": None if end_val is _UNSET else end_val,
+                            }],
+                            "files": []
+                        },
+                        "bbtl": {
+                            "date": None if liquidation_val is _UNSET else liquidation_val,
+                            "file": None
+                        }
                     },
                     "createdAt": now_ts,
                     "updatedAt": now_ts,
@@ -692,6 +713,21 @@ async def get_upload_url(
             "employeeCode": employee_code
         }
 
+def _get_document_upload_updates(doc_type: str, s3_key: str) -> dict:
+    """Helper to return updates dictionary for a document upload based on doc_type."""
+    if doc_type == "idCard":
+        return {"$set": {"checklist.cccd.file": s3_key, "checklist.cccd.checked": True, "updatedAt": _now()}}
+    elif doc_type == "taxCommitment":
+        return {"$set": {"checklist.ckt.file": s3_key, "checklist.ckt.checked": True, "updatedAt": _now()}}
+    elif doc_type == "liquidation":
+        return {"$set": {"checklist.bbtl.file": s3_key, "updatedAt": _now()}}
+    elif doc_type == "serviceContract":
+        return {
+            "$push": {"checklist.hddv.files": s3_key},
+            "$set": {"updatedAt": _now()}
+        }
+    return {}
+
 @router.post("/documents/upload-confirm")
 async def confirm_upload(
     req: UploadConfirmRequest,
@@ -712,11 +748,8 @@ async def confirm_upload(
             detail=f"Không tìm thấy cộng tác viên với mã '{req.employee_code}'"
         )
 
-    update_fields = {
-        f"checklist.{req.doc_type}File": req.s3_key,
-        "updatedAt": _now()
-    }
-    await db[COLLECTION].update_one({"_id": req.employee_code}, {"$set": update_fields})
+    updates = _get_document_upload_updates(req.doc_type, req.s3_key)
+    await db[COLLECTION].update_one({"_id": req.employee_code}, updates)
 
     full_name = _actor_name(current_user)
     username = current_user.get("username", "")
@@ -779,11 +812,8 @@ async def upload_document(
             "employeeCode": employee_code
         }
 
-    update_fields = {
-        f"checklist.{doc_type}File": s3_key,
-        "updatedAt": _now()
-    }
-    await db[COLLECTION].update_one({"_id": employee_code}, {"$set": update_fields})
+    updates = _get_document_upload_updates(doc_type, s3_key)
+    await db[COLLECTION].update_one({"_id": employee_code}, updates)
 
     full_name = _actor_name(current_user)
     username = current_user.get("username", "")
@@ -803,6 +833,7 @@ async def upload_document(
 async def download_collaborator_document(
     employee_code: str,
     doc_type: str,
+    file_key: Optional[str] = None,
     db = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
@@ -821,7 +852,27 @@ async def download_collaborator_document(
         )
 
     checklist = collaborator.get("checklist", {})
-    s3_key = checklist.get(f"{doc_type}File")
+    s3_key = None
+
+    if doc_type == "idCard":
+        s3_key = checklist.get("cccd", {}).get("file")
+    elif doc_type == "taxCommitment":
+        s3_key = checklist.get("ckt", {}).get("file")
+    elif doc_type == "liquidation":
+        s3_key = checklist.get("bbtl", {}).get("file")
+    elif doc_type == "serviceContract":
+        files = checklist.get("hddv", {}).get("files") or []
+        if file_key:
+            if file_key in files:
+                s3_key = file_key
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Tệp tin không thuộc về cộng tác viên này"
+                )
+        elif files:
+            s3_key = files[-1]
+
     if not s3_key:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
