@@ -218,6 +218,128 @@ async def export_collaborators(db=Depends(get_db), current_user: dict = Depends(
         headers={"Content-Disposition": "attachment; filename=danh_sach_ctv.xlsx"},
     )
 
+@router.get("/export-doisoat")
+async def export_collaborators_doisoat(db=Depends(get_db), current_user: dict = Depends(get_current_user)):
+    """Export all collaborators for đối soát to an Excel file using the template."""
+    full_name = _actor_name(current_user)
+    doisoat_template_path = os.path.join(SERVICE_ROOT, "templates", "mau_doisoat_ctv.xlsx")
+    if not os.path.exists(doisoat_template_path):
+        await record_activity(
+            db, action="export_collaborators_doisoat", result="fail", full_name=full_name,
+            username=current_user.get("username", ""),
+            message=f"{full_name} đã xuất đối soát thất bại danh sách cộng tác viên",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Không tìm thấy file template mẫu đối soát"
+        )
+
+    wb = load_workbook(doisoat_template_path)
+    ws = wb.active
+
+    thin_border = Border(
+        left=Side(style='thin', color='D3D3D3'),
+        right=Side(style='thin', color='D3D3D3'),
+        top=Side(style='thin', color='D3D3D3'),
+        bottom=Side(style='thin', color='D3D3D3')
+    )
+    data_font = Font(name='Aptos Narrow', size=11)
+
+    cursor = db[COLLECTION].find({}).sort("_id", 1)
+    row_idx = 5
+    stt = 1
+
+    async for doc in cursor:
+        checklist = doc.get("checklist") or {}
+        
+        cccd = checklist.get("cccd") or {}
+        ckt = checklist.get("ckt") or {}
+        hddv = checklist.get("hddv") or {}
+        bbtl = checklist.get("bbtl") or {}
+
+        # Hợp đồng dịch vụ: Lấy ngày bắt đầu và ngày kết thúc của hợp đồng cuối cùng
+        contracts = hddv.get("contract_date", [])
+        start_date = ""
+        end_date = ""
+        if contracts:
+            last_contract = contracts[-1]
+            if isinstance(last_contract, dict):
+                start_date = last_contract.get("startDate") or ""
+                end_date = last_contract.get("endDate") or ""
+            else:
+                start_date = getattr(last_contract, "startDate", "") or ""
+                end_date = getattr(last_contract, "endDate", "") or ""
+
+        # Bản scan: Hợp đồng dịch vụ có file upload
+        hddv_files = hddv.get("files") or []
+        hddv_scan = "X" if hddv_files else ""
+
+        # CCCD
+        cccd_excel = "X" if cccd.get("checked") else ""
+        cccd_scan = "X" if cccd.get("file") else ""
+
+        # Cam kết thuế
+        ckt_excel = "X" if ckt.get("checked") else ""
+        ckt_scan = "X" if ckt.get("file") else ""
+
+        # Biên bản thanh lí
+        bbtl_excel = "X" if bbtl.get("date") else ""
+        bbtl_scan = "X" if bbtl.get("file") else ""
+
+        row_values = [
+            stt,
+            doc.get("_id") or doc.get("employeeCode", ""),
+            doc.get("fullName", ""),
+            start_date,
+            end_date,
+            hddv_scan,
+            cccd_excel,
+            cccd_scan,
+            ckt_excel,
+            ckt_scan,
+            bbtl_excel,
+            bbtl_scan
+        ]
+
+        for col_idx, val in enumerate(row_values, start=1):
+            cell = ws.cell(row=row_idx, column=col_idx, value=val)
+            cell.font = data_font
+            cell.border = thin_border
+
+            # Alignment formatting
+            if col_idx == 3:  # Họ tên
+                cell.alignment = Alignment(horizontal="left", vertical="center")
+            else:
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+
+        row_idx += 1
+        stt += 1
+
+    # Clear remaining rows in the template if they are beyond our data rows
+    for r in range(row_idx, ws.max_row + 1):
+        for c in range(1, 13):
+            cell = ws.cell(row=r, column=c)
+            cell.value = None
+            cell.border = Border()
+
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    exported_count = stt - 1
+    await record_activity(
+        db, action="export_collaborators_doisoat", result="success", full_name=full_name,
+        username=current_user.get("username", ""),
+        message=f"{full_name} đã xuất đối soát thành công {exported_count} cộng tác viên",
+    )
+
+    filename = f"bmk_ctv_doisoat_hoso_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
 @router.post("/import")
 async def import_collaborators(
     file: UploadFile = File(...), db=Depends(get_db), current_user: dict = Depends(get_current_user)
