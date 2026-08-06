@@ -9,6 +9,7 @@ ActivityAction = Literal[
     "delete_collaborator",
     "import_collaborators",
     "export_collaborators",
+    "export_collaborators_doisoat",
     "upload_collaborator_document",
 ]
 ActivityResult = Literal["success", "error", "fail"]
