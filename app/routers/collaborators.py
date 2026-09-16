@@ -1025,3 +1025,94 @@ async def download_collaborator_document(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Không thể tải file từ S3 MinIO"
         )
+
+
+@router.delete("/{employee_code}/documents/{doc_type}")
+async def delete_collaborator_document(
+    employee_code: str,
+    doc_type: str,
+    file_key: Optional[str] = None,
+    db = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete an uploaded document (such as service contract) from MongoDB and S3."""
+    if doc_type not in ("idCard", "serviceContract", "taxCommitment", "liquidation"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Loại hồ sơ '{doc_type}' không hợp lệ"
+        )
+
+    collaborator = await db[COLLECTION].find_one({"_id": employee_code})
+    if not collaborator:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Không tìm thấy cộng tác viên với mã '{employee_code}'"
+        )
+
+    checklist = collaborator.get("checklist", {})
+    target_s3_key = None
+    update_op = None
+
+    if doc_type == "serviceContract":
+        files = checklist.get("hddv", {}).get("files") or []
+        if not file_key or file_key not in files:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Không tìm thấy tệp tin hợp đồng dịch vụ cần xóa"
+            )
+        target_s3_key = file_key
+        update_op = {
+            "$pull": {"checklist.hddv.files": file_key},
+            "$set": {"updatedAt": _now()}
+        }
+    elif doc_type == "idCard":
+        current_file = checklist.get("cccd", {}).get("file")
+        if not current_file:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không có tệp tin CCCD để xóa")
+        target_s3_key = current_file
+        update_op = {
+            "$set": {"checklist.cccd.file": None, "updatedAt": _now()}
+        }
+    elif doc_type == "taxCommitment":
+        current_file = checklist.get("ckt", {}).get("file")
+        if not current_file:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không có tệp tin Cam kết thuế để xóa")
+        target_s3_key = current_file
+        update_op = {
+            "$set": {"checklist.ckt.file": None, "updatedAt": _now()}
+        }
+    elif doc_type == "liquidation":
+        current_file = checklist.get("bbtl", {}).get("file")
+        if not current_file:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không có tệp tin Biên bản thanh lý để xóa")
+        target_s3_key = current_file
+        update_op = {
+            "$set": {"checklist.bbtl.file": None, "updatedAt": _now()}
+        }
+
+    # Atomic update on MongoDB
+    if update_op:
+        await db[COLLECTION].update_one({"_id": employee_code}, update_op)
+
+    # Delete object from S3 if key exists
+    if target_s3_key:
+        try:
+            s3 = get_s3_client()
+            s3.delete_object(Bucket=settings.S3_BUCKET, Key=target_s3_key)
+            logger.info(f"Đã xóa file S3 Key={target_s3_key} cho CTV={employee_code}")
+        except Exception as e:
+            logger.warning(f"Lỗi khi xóa file S3 Key={target_s3_key}: {str(e)}")
+
+    full_name = _actor_name(current_user)
+    username = current_user.get("username", "")
+    await record_activity(
+        db, action="delete_collaborator_document", result="success", full_name=full_name, username=username,
+        message=f"{full_name} đã xóa tài liệu {doc_type} ({target_s3_key}) của cộng tác viên {employee_code}",
+    )
+
+    return {
+        "status": "success",
+        "message": f"Xóa tài liệu {doc_type} thành công",
+        "employeeCode": employee_code,
+        "fileKey": target_s3_key
+    }
