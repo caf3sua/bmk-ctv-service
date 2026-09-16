@@ -1,17 +1,21 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 class ServiceContractPeriod(BaseModel):
     startDate: Optional[str] = None
     endDate: Optional[str] = None
 
+class ChecklistFileItem(BaseModel):
+    name: str = ""
+    updatedDate: Optional[str] = None
+
 class CccdChecklist(BaseModel):
     checked: bool = False
-    file: Optional[str] = None
+    file: Optional[ChecklistFileItem] = None
 
 class CktChecklist(BaseModel):
     checked: bool = False
-    file: Optional[str] = None
+    file: Optional[ChecklistFileItem] = None
 
 class HddvChecklist(BaseModel):
     # Một cộng tác viên có thể có nhiều hợp đồng dịch vụ theo thời gian (gia hạn, ký lại...).
@@ -19,11 +23,11 @@ class HddvChecklist(BaseModel):
     contract_date: List[ServiceContractPeriod] = Field(
         default_factory=lambda: [ServiceContractPeriod()], min_length=1
     )
-    files: List[str] = Field(default_factory=list)
+    files: List[ChecklistFileItem] = Field(default_factory=list)
 
 class BbtlChecklist(BaseModel):
     date: Optional[str] = None
-    file: Optional[str] = None
+    file: Optional[ChecklistFileItem] = None
 
 class Checklist(BaseModel):
     cccd: CccdChecklist = Field(default_factory=CccdChecklist)

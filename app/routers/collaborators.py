@@ -760,9 +760,9 @@ def _extract_employee_code(filename: str) -> str | None:
         return m.group(1).upper()
     matches = re.findall(r'\d{3,}', base_name)
     if matches:
-        return matches[-1]
+        return matches[0]
     matches = re.findall(r'\d+', base_name)
-    return matches[-1] if matches else None
+    return matches[0] if matches else None
 
 class UploadUrlRequest(BaseModel):
     filename: str
@@ -835,18 +835,47 @@ async def get_upload_url(
             "employeeCode": employee_code
         }
 
+def _extract_file_key(file_obj) -> str | None:
+    """Helper to safely extract the S3 key from either a string or a ChecklistFileItem dict."""
+    if not file_obj:
+        return None
+    if isinstance(file_obj, dict):
+        return file_obj.get("name")
+    if isinstance(file_obj, str):
+        return file_obj
+    return None
+
 def _get_document_upload_updates(doc_type: str, s3_key: str) -> dict:
     """Helper to return updates dictionary for a document upload based on doc_type."""
+    now_str = _now()
+    file_item = {"name": s3_key, "updatedDate": now_str}
     if doc_type == "idCard":
-        return {"$set": {"checklist.cccd.file": s3_key, "checklist.cccd.checked": True, "updatedAt": _now()}}
+        return {
+            "$set": {
+                "checklist.cccd.file": file_item,
+                "checklist.cccd.checked": True,
+                "updatedAt": now_str
+            }
+        }
     elif doc_type == "taxCommitment":
-        return {"$set": {"checklist.ckt.file": s3_key, "checklist.ckt.checked": True, "updatedAt": _now()}}
+        return {
+            "$set": {
+                "checklist.ckt.file": file_item,
+                "checklist.ckt.checked": True,
+                "updatedAt": now_str
+            }
+        }
     elif doc_type == "liquidation":
-        return {"$set": {"checklist.bbtl.file": s3_key, "updatedAt": _now()}}
+        return {
+            "$set": {
+                "checklist.bbtl.file": file_item,
+                "updatedAt": now_str
+            }
+        }
     elif doc_type == "serviceContract":
         return {
-            "$push": {"checklist.hddv.files": s3_key},
-            "$set": {"updatedAt": _now()}
+            "$push": {"checklist.hddv.files": file_item},
+            "$set": {"updatedAt": now_str}
         }
     return {}
 
@@ -977,23 +1006,26 @@ async def download_collaborator_document(
     s3_key = None
 
     if doc_type == "idCard":
-        s3_key = checklist.get("cccd", {}).get("file")
+        s3_key = _extract_file_key(checklist.get("cccd", {}).get("file"))
     elif doc_type == "taxCommitment":
-        s3_key = checklist.get("ckt", {}).get("file")
+        s3_key = _extract_file_key(checklist.get("ckt", {}).get("file"))
     elif doc_type == "liquidation":
-        s3_key = checklist.get("bbtl", {}).get("file")
+        s3_key = _extract_file_key(checklist.get("bbtl", {}).get("file"))
     elif doc_type == "serviceContract":
         files = checklist.get("hddv", {}).get("files") or []
         if file_key:
-            if file_key in files:
-                s3_key = file_key
-            else:
+            for f in files:
+                f_name = f.get("name") if isinstance(f, dict) else f
+                if f_name == file_key:
+                    s3_key = file_key
+                    break
+            if not s3_key:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Tệp tin không thuộc về cộng tác viên này"
                 )
         elif files:
-            s3_key = files[-1]
+            s3_key = _extract_file_key(files[-1])
 
     if not s3_key:
         raise HTTPException(
@@ -1055,18 +1087,27 @@ async def delete_collaborator_document(
 
     if doc_type == "serviceContract":
         files = checklist.get("hddv", {}).get("files") or []
-        if not file_key or file_key not in files:
+        target_item = None
+        for f in files:
+            f_name = f.get("name") if isinstance(f, dict) else f
+            if f_name == file_key:
+                target_item = f
+                break
+        if not file_key or target_item is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Không tìm thấy tệp tin hợp đồng dịch vụ cần xóa"
             )
         target_s3_key = file_key
+        pull_target = {"name": file_key} if isinstance(target_item, dict) else file_key
         update_op = {
-            "$pull": {"checklist.hddv.files": file_key},
-            "$set": {"updatedAt": _now()}
+            "$pull": {"checklist.hddv.files": pull_target},
+            "$set": {
+                "updatedAt": _now()
+            }
         }
     elif doc_type == "idCard":
-        current_file = checklist.get("cccd", {}).get("file")
+        current_file = _extract_file_key(checklist.get("cccd", {}).get("file"))
         if not current_file:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không có tệp tin CCCD để xóa")
         target_s3_key = current_file
@@ -1074,7 +1115,7 @@ async def delete_collaborator_document(
             "$set": {"checklist.cccd.file": None, "updatedAt": _now()}
         }
     elif doc_type == "taxCommitment":
-        current_file = checklist.get("ckt", {}).get("file")
+        current_file = _extract_file_key(checklist.get("ckt", {}).get("file"))
         if not current_file:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không có tệp tin Cam kết thuế để xóa")
         target_s3_key = current_file
@@ -1082,7 +1123,7 @@ async def delete_collaborator_document(
             "$set": {"checklist.ckt.file": None, "updatedAt": _now()}
         }
     elif doc_type == "liquidation":
-        current_file = checklist.get("bbtl", {}).get("file")
+        current_file = _extract_file_key(checklist.get("bbtl", {}).get("file"))
         if not current_file:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Không có tệp tin Biên bản thanh lý để xóa")
         target_s3_key = current_file
