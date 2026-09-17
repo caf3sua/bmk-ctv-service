@@ -11,13 +11,14 @@ ActivityAction = Literal[
     "export_collaborators",
     "export_collaborators_doisoat",
     "upload_collaborator_document",
+    "delete_collaborator_document",
 ]
 ActivityResult = Literal["success", "error", "fail"]
 
 class ActivityLogResponse(BaseModel):
     id: str
-    action: ActivityAction
-    result: ActivityResult
+    action: str
+    result: str
     fullName: str
     username: str
     message: str
