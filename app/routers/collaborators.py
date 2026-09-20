@@ -662,6 +662,7 @@ async def create_collaborator(payload: CollaboratorCreate, db=Depends(get_db), c
             db, action="create_collaborator", result="fail", full_name=full_name,
             username=current_user.get("username", ""),
             message=f"{full_name} tạo thất bại hồ sơ cho cộng tác viên mã {employee_code}",
+            employee_code=employee_code,
         )
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -679,6 +680,7 @@ async def create_collaborator(payload: CollaboratorCreate, db=Depends(get_db), c
         db, action="create_collaborator", result="success", full_name=full_name,
         username=current_user.get("username", ""),
         message=f"{full_name} tạo thành công hồ sơ cho cộng tác viên mã {employee_code}",
+        employee_code=employee_code,
     )
     return _to_response(doc)
 
@@ -693,6 +695,7 @@ async def update_collaborator(employee_code: str, payload: CollaboratorUpdate, d
         await record_activity(
             db, action="update_collaborator", result="fail", full_name=full_name, username=username,
             message=f"{full_name} cập nhật thất bại hồ sơ cho cộng tác viên mã {employee_code}",
+            employee_code=employee_code,
         )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -706,6 +709,7 @@ async def update_collaborator(employee_code: str, payload: CollaboratorUpdate, d
             await record_activity(
                 db, action="update_collaborator", result="fail", full_name=full_name, username=username,
                 message=f"{full_name} cập nhật thất bại hồ sơ cho cộng tác viên mã {employee_code}",
+                employee_code=employee_code,
             )
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -724,6 +728,7 @@ async def update_collaborator(employee_code: str, payload: CollaboratorUpdate, d
     await record_activity(
         db, action="update_collaborator", result="success", full_name=full_name, username=username,
         message=f"{full_name} cập nhật thành công hồ sơ cho cộng tác viên mã {new_code}",
+        employee_code=new_code,
     )
     return _to_response(doc)
 
@@ -738,6 +743,7 @@ async def delete_collaborator(employee_code: str, db=Depends(get_db), current_us
         await record_activity(
             db, action="delete_collaborator", result="fail", full_name=full_name, username=username,
             message=f"{full_name} xóa thất bại hồ sơ cộng tác viên mã {employee_code}",
+            employee_code=employee_code,
         )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -747,6 +753,7 @@ async def delete_collaborator(employee_code: str, db=Depends(get_db), current_us
     await record_activity(
         db, action="delete_collaborator", result="success", full_name=full_name, username=username,
         message=f"{full_name} xóa thành công hồ sơ cộng tác viên mã {employee_code}",
+        employee_code=employee_code,
     )
     return None
 
@@ -907,6 +914,7 @@ async def confirm_upload(
     await record_activity(
         db, action="upload_collaborator_document", result="success", full_name=full_name, username=username,
         message=f"{full_name} đã upload tài liệu {req.doc_type} cho cộng tác viên {req.employee_code}",
+        employee_code=req.employee_code,
     )
 
     return {
@@ -971,6 +979,7 @@ async def upload_document(
     await record_activity(
         db, action="upload_collaborator_document", result="success", full_name=full_name, username=username,
         message=f"{full_name} đã upload tài liệu {doc_type} cho cộng tác viên {employee_code}",
+        employee_code=employee_code,
     )
 
     return {
@@ -1149,6 +1158,7 @@ async def delete_collaborator_document(
     await record_activity(
         db, action="delete_collaborator_document", result="success", full_name=full_name, username=username,
         message=f"{full_name} đã xóa tài liệu {doc_type} ({target_s3_key}) của cộng tác viên {employee_code}",
+        employee_code=employee_code,
     )
 
     return {

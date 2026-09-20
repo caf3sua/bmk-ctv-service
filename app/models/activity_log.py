@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Literal
+from typing import Literal, Optional
 
 ActivityAction = Literal[
     "login",
@@ -22,6 +22,7 @@ class ActivityLogResponse(BaseModel):
     fullName: str
     username: str
     message: str
+    employeeCode: Optional[str] = None
     createdAt: str
 
     model_config = {
@@ -33,7 +34,9 @@ class ActivityLogResponse(BaseModel):
                 "fullName": "Quản trị viên",
                 "username": "admin",
                 "message": "Quản trị viên đăng nhập hệ thống thành công",
+                "employeeCode": "CTV001",
                 "createdAt": "2026-01-15T02:00:00.000Z",
             }
         }
     }
+
