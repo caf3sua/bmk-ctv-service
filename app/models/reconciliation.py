@@ -12,6 +12,7 @@ class TpBankContractItem(BaseModel):
     note: Optional[str] = None
 
 class TpBankInfo(BaseModel):
+    contractCount: Optional[int] = None
     contracts: List[TpBankContractItem] = Field(default_factory=list)
 
 class BmkHrInfo(BaseModel):
@@ -26,11 +27,19 @@ class BmkSystemInfo(BaseModel):
     liquidationCount: int = 0
     taxCommitmentCount: int = 0
 
+class ReconciliationResultDetail(BaseModel):
+    contract: Optional[str] = None       # "success" | "failed" | None
+    idCard: Optional[str] = None         # "success" | "failed" | None
+    liquidation: Optional[str] = None    # "success" | "failed" | None
+    taxCommitment: Optional[str] = None # "success" | "failed" | None
+
 class ReconciliationRecordBase(BaseModel):
     employeeCode: str
     fullName: str = ""
     idNumber: Optional[str] = None  # Số CCCD
     createdSource: Optional[str] = "bmk_system"  # Nguồn tạo: bmk_system, bmk_hr, tpbank
+    isBmkSystemExist: bool = False  # Đánh dấu mã NV có tồn tại ở bmk_ctv_collaborators hay không
+    isSynced: bool = False  # Flag sync đánh dấu nhân viên đã thực hiện đối soát hay chưa
     departmentLevel1: Optional[str] = None
     position: Optional[str] = None
     employmentStatus: Optional[str] = None
@@ -39,7 +48,9 @@ class ReconciliationRecordBase(BaseModel):
     tpbankInfo: TpBankInfo = Field(default_factory=TpBankInfo)
     bmkHrInfo: BmkHrInfo = Field(default_factory=BmkHrInfo)
     bmkSystemInfo: BmkSystemInfo = Field(default_factory=BmkSystemInfo)
+    result: Optional[ReconciliationResultDetail] = None
     reconciliationStatus: Optional[str] = "pending"
+
 
 class ReconciliationRecordCreate(ReconciliationRecordBase):
     pass
@@ -48,6 +59,7 @@ class ReconciliationRecordUpdate(BaseModel):
     fullName: Optional[str] = None
     idNumber: Optional[str] = None
     createdSource: Optional[str] = None
+    isSynced: Optional[bool] = None
     departmentLevel1: Optional[str] = None
     position: Optional[str] = None
     employmentStatus: Optional[str] = None
@@ -56,6 +68,7 @@ class ReconciliationRecordUpdate(BaseModel):
     tpbankInfo: Optional[TpBankInfo] = None
     bmkHrInfo: Optional[BmkHrInfo] = None
     bmkSystemInfo: Optional[BmkSystemInfo] = None
+    result: Optional[ReconciliationResultDetail] = None
     reconciliationStatus: Optional[str] = None
 
 class ReconciliationRecordResponse(ReconciliationRecordBase):
