@@ -14,6 +14,7 @@ from app.models.reconciliation import (
     ReconciliationRecordUpdate,
     ReconciliationRecordResponse,
     ReconciliationListResponse,
+    ImportHrTpBankResult,
     BmkSystemInfo,
     TpBankInfo,
     BmkHrInfo,
@@ -151,6 +152,8 @@ async def list_reconciliation_records(
                 "result.idCard": "success",
                 "result.liquidation": "success",
             })
+        elif r_val in ["warn_bank_contract", "warn_contract", "warn", "mismatch_bank"]:
+            conditions.append({"result.contract": "warn"})
         elif r_val in ["mismatch_contract", "failed_contract"]:
             conditions.append({"result.contract": "failed"})
         elif r_val in ["mismatch_idcard", "failed_idcard"]:
@@ -173,6 +176,21 @@ async def list_reconciliation_records(
                 "$or": [
                     {"createdSource": "bmk_hr"},
                     {"createdSource": "HR BMK"},
+                ]
+            })
+        elif src in ["hr_tpbank", "HR TP Bank", "HR Tp bank"]:
+            conditions.append({
+                "$or": [
+                    {"createdSource": "hr_tpbank"},
+                    {"createdSource": "HR TP Bank"},
+                    {"createdSource": "HR Tp bank"},
+                ]
+            })
+        elif src == "tpbank":
+            conditions.append({
+                "$or": [
+                    {"createdSource": "tpbank"},
+                    {"createdSource": "TP Bank"},
                 ]
             })
         else:
@@ -494,6 +512,224 @@ async def import_hr_bmk_data(
     }
 
 
+@router.post("/import-hr-tpbank", response_model=ImportHrTpBankResult)
+async def import_hr_tpbank_contracts(
+    file: UploadFile = File(...),
+    db=Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Import số lượng Hợp đồng từ file Excel HR TP Bank (template_ctv_hr_tpbank.xlsx).
+    Cột mẫu: STT, Mã NV, Họ và tên, Số lượng hợp đồng.
+    - Lưu vào TpBankInfo.hrContractCount
+    - Nếu CTV chưa tồn tại: tạo mới với employeeCode, fullName, TpBankInfo.hrContractCount, createdSource="HR TP Bank"
+    - Nếu CTV đã tồn tại: cập nhật TpBankInfo.hrContractCount
+    """
+    if not file.filename or not file.filename.lower().endswith((".xlsx", ".xlsm")):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Chỉ hỗ trợ file Excel (.xlsx, .xlsm)",
+        )
+
+    content = await file.read()
+    try:
+        wb = load_workbook(BytesIO(content), data_only=True, read_only=True)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Không đọc được file Excel: {str(e)}",
+        )
+
+    ws = wb.active
+    rows = list(ws.iter_rows(values_only=True))
+    wb.close()
+
+    if len(rows) < 2:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File Excel không chứa dữ liệu",
+        )
+
+    # Tìm dòng tiêu đề chứa 'MNV', 'MÃ NV', hoặc 'MÃ NHÂN VIÊN'
+    header_row_idx = None
+    header = []
+    for idx, r in enumerate(rows):
+        if r and any(cell and ("MNV" in str(cell).upper() or "MÃ NV" in str(cell).upper() or "MÃ NHÂN VIÊN" in str(cell).upper()) for cell in r):
+            header_row_idx = idx
+            header = [str(c).strip() if c is not None else "" for c in r]
+            break
+
+    if header_row_idx is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Không tìm thấy dòng tiêu đề chứa cột 'Mã NV' trong file Excel",
+        )
+
+    header_upper = [h.upper() for h in header]
+
+    def find_col_idx(candidates: List[str]) -> Optional[int]:
+        for candidate in candidates:
+            cand_u = candidate.upper()
+            for idx, h in enumerate(header_upper):
+                if cand_u in h:
+                    return idx
+        return None
+
+    code_idx = find_col_idx(["MÃ NV", "MNV", "MÃ NHÂN VIÊN"])
+    name_idx = find_col_idx(["HỌ VÀ TÊN", "HỌ TÊN", "TÊN"])
+    contract_idx = find_col_idx(["SỐ LƯỢNG HỢP ĐỒNG", "SL HỢP ĐỒNG", "SL HĐ", "HỢP ĐỒNG"])
+
+    if code_idx is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File thiếu cột 'Mã NV'",
+        )
+
+    def parse_int(val) -> Optional[int]:
+        if val is None or str(val).strip() in ["", "-", "None", "null"]:
+            return None
+        try:
+            return int(float(str(val).strip()))
+        except (ValueError, TypeError):
+            return None
+
+    def parse_str(val) -> Optional[str]:
+        if val is None:
+            return None
+        s = str(val).strip()
+        if not s or s == "-":
+            return None
+        return s
+
+    operations = []
+    now = _now()
+    created_count = 0
+    updated_count = 0
+    total_processed = 0
+
+    existing_docs = {}
+    async for doc in db[COLLECTION].find({}, {
+        "employeeCode": 1,
+        "fullName": 1,
+        "tpbankInfo": 1,
+        "bmkHrInfo": 1,
+        "bmkSystemInfo": 1,
+        "employmentStatus": 1,
+        "isSynced": 1,
+        "result": 1,
+    }):
+        code = doc.get("employeeCode")
+        if code:
+            existing_docs[str(code).strip()] = doc
+
+    for row in rows[header_row_idx + 1:]:
+        if not row or all(cell is None or str(cell).strip() == "" for cell in row):
+            continue
+
+        raw_code = row[code_idx] if code_idx < len(row) else None
+        employee_code = parse_str(raw_code)
+        if not employee_code:
+            continue
+
+        if employee_code.isdigit() and len(employee_code) < 5:
+            employee_code = employee_code.zfill(5)
+
+        full_name = parse_str(row[name_idx] if name_idx is not None and name_idx < len(row) else None) or ""
+        contract_cnt = parse_int(row[contract_idx] if contract_idx is not None and contract_idx < len(row) else None)
+
+        total_processed += 1
+
+        if employee_code in existing_docs:
+            updated_count += 1
+            ex_doc = existing_docs[employee_code]
+            update_fields = {
+                "tpbankInfo.hrContractCount": contract_cnt,
+                "updatedAt": now,
+            }
+            if ex_doc.get("isSynced") or ex_doc.get("result"):
+                est_cnt = (ex_doc.get("tpbankInfo") or {}).get("estimatedContractCount")
+                bmk_hr = ex_doc.get("bmkHrInfo") or {}
+                bmk_sys = ex_doc.get("bmkSystemInfo") or {}
+                emp_status = ex_doc.get("employmentStatus")
+                result_obj = _calculate_reconciliation_result(
+                    estimated_contract_count=est_cnt,
+                    hr_contract_count=contract_cnt,
+                    bmk_hr_info=bmk_hr,
+                    bmk_system_info=bmk_sys,
+                    employment_status=emp_status,
+                )
+                update_fields["result"] = result_obj
+            if full_name:
+                operations.append(
+                    UpdateOne(
+                        {"employeeCode": employee_code, "$or": [{"fullName": ""}, {"fullName": None}, {"fullName": {"$exists": False}}]},
+                        {"$set": {"fullName": full_name}}
+                    )
+                )
+            operations.append(
+                UpdateOne(
+                    {"employeeCode": employee_code},
+                    {"$set": update_fields}
+                )
+            )
+        else:
+            created_count += 1
+            existing_codes.add(employee_code)
+            new_doc = {
+                "_id": employee_code,
+                "employeeCode": employee_code,
+                "fullName": full_name,
+                "createdSource": "HR TP Bank",
+                "departmentLevel1": None,
+                "position": None,
+                "employmentStatus": None,
+                "onboardDate": None,
+                "offboardDate": None,
+                "tpbankInfo": {
+                    "estimatedContractCount": None,
+                    "hrContractCount": contract_cnt,
+                    "contracts": [],
+                },
+                "bmkHrInfo": {
+                    "contractCount": 0,
+                    "idCardCount": 0,
+                    "liquidationCount": 0,
+                    "taxCommitmentCount": 0,
+                },
+                "bmkSystemInfo": {
+                    "contractCount": 0,
+                    "idCardCount": 0,
+                    "liquidationCount": 0,
+                    "taxCommitmentCount": 0,
+                },
+                "reconciliationStatus": "pending",
+                "createdAt": now,
+                "updatedAt": now,
+            }
+            operations.append(
+                UpdateOne(
+                    {"employeeCode": employee_code},
+                    {"$setOnInsert": new_doc},
+                    upsert=True,
+                )
+            )
+
+        if len(operations) >= 500:
+            await db[COLLECTION].bulk_write(operations, ordered=False)
+            operations = []
+
+    if operations:
+        await db[COLLECTION].bulk_write(operations, ordered=False)
+
+    return {
+        "status": "success",
+        "message": f"Đã nhập thành công số lượng HĐ TP Bank: {total_processed} CTV (Tạo mới: {created_count}, Cập nhật: {updated_count})",
+        "totalProcessed": total_processed,
+        "createdCount": created_count,
+        "updatedCount": updated_count,
+    }
+
+
 def _parse_excel_date(val) -> tuple[Optional[str], Optional[datetime]]:
     if val is None:
         return None, None
@@ -536,7 +772,8 @@ def _calculate_tpbank_contract_count(onboard_dt: Optional[datetime], offboard_dt
 
 
 def _calculate_reconciliation_result(
-    contract_count: Optional[int],
+    estimated_contract_count: Optional[int],
+    hr_contract_count: Optional[int],
     bmk_hr_info: dict,
     bmk_system_info: dict,
     employment_status: Optional[str],
@@ -545,11 +782,15 @@ def _calculate_reconciliation_result(
     hr_contract = (bmk_hr_info or {}).get("contractCount", 0) or 0
     total_bmk_contract = sys_contract + hr_contract
 
-    # Đối soát contract: nếu tpbankInfo.contractCount <= bmkSystemInfo.contractCount + bmkHrInfo.contractCount -> success còn lại failed
-    if contract_count is not None and contract_count <= total_bmk_contract:
-        contract_res = "success"
+    # 1. Đầu tiên kiểm tra nếu TpBankInfo.estimatedContractCount != TpBankInfo.hrContractCount -> cảnh báo Lệch Bank
+    if estimated_contract_count != hr_contract_count:
+        contract_res = "warn"
     else:
-        contract_res = "failed"
+        # 2. Nếu TpBankInfo.estimatedContractCount == TpBankInfo.hrContractCount thì thực hiện tiếp logic hiện tại
+        if estimated_contract_count is not None and estimated_contract_count <= total_bmk_contract:
+            contract_res = "success"
+        else:
+            contract_res = "failed"
 
     # Đối soát idCard: nếu bmkSystemInfo.idCardCount = 1 hoặc bmkHrInfo.idCardCount = 1 -> success còn lại failed
     sys_idcard = (bmk_system_info or {}).get("idCardCount", 0) or 0
@@ -594,7 +835,7 @@ async def reconcile_tpbank_data(
     2. Đọc MNV, HỌ VÀ TÊN, NGÀY GIA NHẬP, NGÀY THÔI VIỆC
     3. Nếu chưa có -> tạo mới với createdSource="TP Bank", isSynced=True
     4. Nếu đã có -> update NGÀY GIA NHẬP, NGÀY THÔI VIỆC, isSynced=True
-    5. Tính số HĐ lưu vào tpbankInfo.contractCount
+    5. Tính số HĐ dự tính lưu vào tpbankInfo.estimatedContractCount
     """
     if not file.filename or not file.filename.lower().endswith((".xlsx", ".xlsm")):
         raise HTTPException(
@@ -722,14 +963,16 @@ async def reconcile_tpbank_data(
             bmk_system_info = existing_doc.get("bmkSystemInfo") or {}
 
             result_obj = _calculate_reconciliation_result(
-                contract_count=contract_count,
+                estimated_contract_count=contract_count,
+                hr_contract_count=tpbank_info.get("hrContractCount"),
                 bmk_hr_info=bmk_hr_info,
                 bmk_system_info=bmk_system_info,
                 employment_status=employment_status,
             )
 
             new_tpbank_info = {
-                "contractCount": contract_count,
+                "estimatedContractCount": contract_count,
+                "hrContractCount": tpbank_info.get("hrContractCount"),
                 "contracts": contracts,
             }
             update_set = {
@@ -754,7 +997,8 @@ async def reconcile_tpbank_data(
             created_count += 1
             existing_docs[employee_code] = {"employeeCode": employee_code, "fullName": full_name}
             new_tpbank_info = {
-                "contractCount": contract_count,
+                "estimatedContractCount": contract_count,
+                "hrContractCount": None,
                 "contracts": [],
             }
             empty_info = {
@@ -764,7 +1008,8 @@ async def reconcile_tpbank_data(
                 "taxCommitmentCount": 0,
             }
             result_obj = _calculate_reconciliation_result(
-                contract_count=contract_count,
+                estimated_contract_count=contract_count,
+                hr_contract_count=None,
                 bmk_hr_info=empty_info,
                 bmk_system_info=empty_info,
                 employment_status=employment_status,

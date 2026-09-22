@@ -12,7 +12,8 @@ class TpBankContractItem(BaseModel):
     note: Optional[str] = None
 
 class TpBankInfo(BaseModel):
-    contractCount: Optional[int] = None
+    estimatedContractCount: Optional[int] = None
+    hrContractCount: Optional[int] = None
     contracts: List[TpBankContractItem] = Field(default_factory=list)
 
 class BmkHrInfo(BaseModel):
@@ -28,7 +29,7 @@ class BmkSystemInfo(BaseModel):
     taxCommitmentCount: int = 0
 
 class ReconciliationResultDetail(BaseModel):
-    contract: Optional[str] = None       # "success" | "failed" | None
+    contract: Optional[str] = None       # "success" | "failed" | "warn" | None
     idCard: Optional[str] = None         # "success" | "failed" | None
     liquidation: Optional[str] = None    # "success" | "failed" | None
     taxCommitment: Optional[str] = None # "success" | "failed" | None
@@ -128,3 +129,10 @@ class ReconciliationListResponse(BaseModel):
     page: int
     pageSize: int
     totalPages: int
+
+class ImportHrTpBankResult(BaseModel):
+    status: str
+    message: str
+    totalProcessed: int
+    createdCount: int
+    updatedCount: int
