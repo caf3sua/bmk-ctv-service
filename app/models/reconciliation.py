@@ -136,3 +136,45 @@ class ImportHrTpBankResult(BaseModel):
     totalProcessed: int
     createdCount: int
     updatedCount: int
+
+
+class ReconciliationHistoryStats(BaseModel):
+    totalSuccess: int = 0  # Cả 3 SL HĐ, BBTL, CCCD đều khớp
+    totalWarnBank: int = 0  # SL HĐ lệch với bank
+    totalMismatchContract: int = 0  # Lệch SL HĐ
+    totalMismatchIdCard: int = 0  # Lệch CCCD
+    totalMismatchLiquidation: int = 0  # Lệch BBTL
+
+
+class ReconciliationResultFileInfo(BaseModel):
+    filename: str
+    s3Key: str
+    s3Bucket: str
+    fileSize: Optional[int] = 0
+
+
+class ReconciliationHistoryResponse(BaseModel):
+    id: str
+    filename: str
+    s3Key: str
+    s3Bucket: str
+    fileSize: Optional[int] = 0
+    uploadedBy: str
+    username: str
+    totalRows: int = 0
+    successRows: int = 0
+    failedRows: int = 0
+    status: str = "success"  # "success" | "failed"
+    message: str = ""
+    stats: ReconciliationHistoryStats = Field(default_factory=ReconciliationHistoryStats)
+    resultFile: Optional[ReconciliationResultFileInfo] = None
+    createdAt: str
+
+
+class ReconciliationHistoryListResponse(BaseModel):
+    items: List[ReconciliationHistoryResponse]
+    total: int
+    page: int
+    pageSize: int
+    totalPages: int
+

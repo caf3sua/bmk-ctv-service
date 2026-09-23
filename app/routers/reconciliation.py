@@ -3,17 +3,29 @@ import re
 from datetime import datetime, timezone, date
 from io import BytesIO
 from typing import List, Optional
+from urllib.parse import quote
+from bson import ObjectId
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi.responses import StreamingResponse
 from openpyxl import load_workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from openpyxl.utils import get_column_letter
 from pymongo import UpdateOne
 
+from app.core.config import settings
 from app.core.database import get_db
+from app.core.logging import get_logger
+from app.core.s3 import get_s3_client, upload_to_s3
 from app.core.security import get_current_user
 from app.models.reconciliation import (
     ReconciliationRecordCreate,
     ReconciliationRecordUpdate,
     ReconciliationRecordResponse,
     ReconciliationListResponse,
+    ReconciliationHistoryResponse,
+    ReconciliationHistoryListResponse,
+    ReconciliationHistoryStats,
+    ReconciliationResultFileInfo,
     ImportHrTpBankResult,
     BmkSystemInfo,
     TpBankInfo,
@@ -21,9 +33,11 @@ from app.models.reconciliation import (
 )
 
 router = APIRouter(prefix="/api/reconciliation", tags=["Reconciliation"])
+logger = get_logger(__name__)
 
 COLLECTION = "bmk_ctv_reconciliations"
 COLLABORATORS_COLLECTION = "bmk_ctv_collaborators"
+HISTORY_COLLECTION = "bmk_ctv_reconciliation_history"
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -214,6 +228,163 @@ async def list_reconciliation_records(
         "pageSize": page_size,
         "totalPages": total_pages,
     }
+
+
+@router.get("/history", response_model=ReconciliationHistoryListResponse)
+async def list_reconciliation_history(
+    page: int = Query(1, ge=1, description="Số trang"),
+    page_size: int = Query(20, ge=1, le=100, description="Số dòng mỗi trang"),
+    db=Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Lấy danh sách lịch sử các phiên đối soát TP Bank."""
+    total = await db[HISTORY_COLLECTION].count_documents({})
+    total_pages = max(1, math.ceil(total / page_size))
+    skip = (page - 1) * page_size
+
+    cursor = db[HISTORY_COLLECTION].find({}).sort("createdAt", -1).skip(skip).limit(page_size)
+    items = []
+    async for doc in cursor:
+        items.append({
+            "id": str(doc["_id"]),
+            "filename": doc.get("filename", ""),
+            "s3Key": doc.get("s3Key", ""),
+            "s3Bucket": doc.get("s3Bucket", settings.S3_BUCKET),
+            "fileSize": doc.get("fileSize", 0),
+            "uploadedBy": doc.get("uploadedBy", ""),
+            "username": doc.get("username", ""),
+            "totalRows": doc.get("totalRows", 0),
+            "successRows": doc.get("successRows", 0),
+            "failedRows": doc.get("failedRows", 0),
+            "status": doc.get("status", "success"),
+            "message": doc.get("message", ""),
+            "stats": doc.get("stats") or {
+                "totalSuccess": 0,
+                "totalWarnBank": 0,
+                "totalMismatchContract": 0,
+                "totalMismatchIdCard": 0,
+                "totalMismatchLiquidation": 0,
+            },
+            "resultFile": doc.get("resultFile"),
+            "createdAt": doc.get("createdAt", _now()),
+        })
+
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "pageSize": page_size,
+        "totalPages": total_pages,
+    }
+
+
+@router.get("/history/{history_id}/download")
+async def download_reconciliation_history_file(
+    history_id: str,
+    db=Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Tải file đối soát gốc đã upload từ S3 MinIO."""
+    if not ObjectId.is_valid(history_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mã lịch sử đối soát không hợp lệ",
+        )
+
+    history = await db[HISTORY_COLLECTION].find_one({"_id": ObjectId(history_id)})
+    if not history:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Không tìm thấy lịch sử đối soát",
+        )
+
+    s3_key = history.get("s3Key")
+    s3_bucket = history.get("s3Bucket", settings.S3_BUCKET)
+    filename = history.get("filename", "reconciliation_source.xlsx")
+
+    if not s3_key:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Không có thông tin lưu trữ S3 cho file này",
+        )
+
+    try:
+        s3 = get_s3_client()
+        response = s3.get_object(Bucket=s3_bucket, Key=s3_key)
+
+        def iter_chunks():
+            for chunk in response["Body"].iter_chunks(chunk_size=1024 * 1024):
+                yield chunk
+
+        return StreamingResponse(
+            iter_chunks(),
+            media_type=response.get("ContentType", "application/octet-stream"),
+            headers={
+                "Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"
+            },
+        )
+    except Exception as e:
+        logger.error(f"Lỗi khi tải file từ S3 cho History ID={history_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Không thể tải file từ S3 MinIO",
+        )
+
+
+@router.get("/history/{history_id}/download-result")
+async def download_reconciliation_result_file(
+    history_id: str,
+    db=Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Tải file kết quả đối soát đã bổ sung các cột đối soát từ S3 MinIO."""
+    if not ObjectId.is_valid(history_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mã lịch sử đối soát không hợp lệ",
+        )
+
+    history = await db[HISTORY_COLLECTION].find_one({"_id": ObjectId(history_id)})
+    if not history:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Không tìm thấy lịch sử đối soát",
+        )
+
+    result_file = history.get("resultFile")
+    if not result_file or not isinstance(result_file, dict) or not result_file.get("s3Key"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Phiên đối soát này chưa có file kết quả",
+        )
+
+    s3_key = result_file.get("s3Key")
+    s3_bucket = result_file.get("s3Bucket", settings.S3_BUCKET)
+    filename = result_file.get("filename", "ket_qua_doi_soat.xlsx")
+
+    try:
+        s3 = get_s3_client()
+        response = s3.get_object(Bucket=s3_bucket, Key=s3_key)
+
+        def iter_chunks():
+            for chunk in response["Body"].iter_chunks(chunk_size=1024 * 1024):
+                yield chunk
+
+        return StreamingResponse(
+            iter_chunks(),
+            media_type=response.get("ContentType", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+            headers={
+                "Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"
+            },
+        )
+    except Exception as e:
+        logger.error(f"Lỗi khi tải file kết quả từ S3 cho History ID={history_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Không thể tải file kết quả từ S3 MinIO",
+        )
+
+
 
 @router.get("/{employee_code}", response_model=ReconciliationRecordResponse)
 async def get_reconciliation_record(
@@ -847,8 +1018,18 @@ async def reconcile_tpbank_data(
     await db[COLLECTION].update_many({}, {"$set": {"isSynced": False, "result": None}})
 
     content = await file.read()
+
+    # Upload file đối soát gốc lên S3 MinIO
+    now_ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    s3_key = f"reconcile_tpbank/{now_ts}_{file.filename}"
+    s3_bucket = settings.S3_BUCKET
     try:
-        wb = load_workbook(BytesIO(content), data_only=True, read_only=True)
+        upload_to_s3(content, s3_key)
+    except Exception as e:
+        logger.warning(f"Không thể lưu file lên S3 MinIO: {str(e)}")
+
+    try:
+        wb = load_workbook(BytesIO(content))
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -857,9 +1038,9 @@ async def reconcile_tpbank_data(
 
     ws = wb.active
     rows = list(ws.iter_rows(values_only=True))
-    wb.close()
 
     if len(rows) < 2:
+        wb.close()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="File Excel không chứa dữ liệu",
@@ -874,6 +1055,7 @@ async def reconcile_tpbank_data(
             break
 
     if header_row_idx is None:
+        wb.close()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Không tìm thấy dòng tiêu đề chứa cột 'MNV' trong file Excel",
@@ -895,15 +1077,63 @@ async def reconcile_tpbank_data(
     offboard_idx = find_col_idx(["NGÀY THÔI VIỆC", "NGÀY NGHỈ"])
 
     if code_idx is None:
+        wb.close()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="File thiếu cột 'MNV' (Mã nhân viên)",
         )
 
+    # Khởi tạo tiêu đề 11 cột kết quả đối soát mới (bắt đầu từ cột 11 / K)
+    new_headers = [
+        (11, "HĐ dự tính"),
+        (12, "HĐ từ bank"),
+        (13, "HĐ HR BMK"),
+        (14, "CCCD HR BMK"),
+        (15, "BBTL HR BMK"),
+        (16, "HĐ System BMK"),
+        (17, "CCCD System BMK"),
+        (18, "BBTL System BMK"),
+        (19, "Đối soát HĐ"),
+        (20, "Đối soát CCCD"),
+        (21, "Đối soát BBTL"),
+    ]
+    header_font = Font(name="Calibri", size=10, bold=True, color="0F172A")
+    header_fill_tpbank = PatternFill(start_color="EDE9FE", end_color="EDE9FE", fill_type="solid")
+    header_fill_hr = PatternFill(start_color="FEF3C7", end_color="FEF3C7", fill_type="solid")
+    header_fill_sys = PatternFill(start_color="DCFCE7", end_color="DCFCE7", fill_type="solid")
+    header_fill_res = PatternFill(start_color="E0E7FF", end_color="E0E7FF", fill_type="solid")
+
+    thin_side = Side(style="thin", color="CBD5E1")
+    thin_border = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thin_side)
+    header_align = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
+    data_font = Font(name="Calibri", size=10)
+    data_align_center = Alignment(horizontal="center", vertical="center")
+    font_not_exist = Font(name="Calibri", size=10, italic=True, color="DC2626")
+    font_match = Font(name="Calibri", size=10, bold=True, color="166534")
+    font_warn = Font(name="Calibri", size=10, bold=True, color="B45309")
+    font_mismatch = Font(name="Calibri", size=10, bold=True, color="DC2626")
+
+    header_row_num = header_row_idx + 1
+    for col_idx_new, title in new_headers:
+        c = ws.cell(row=header_row_num, column=col_idx_new, value=title)
+        c.font = header_font
+        c.alignment = header_align
+        c.border = thin_border
+        if col_idx_new in [11, 12]:
+            c.fill = header_fill_tpbank
+        elif col_idx_new in [13, 14, 15]:
+            c.fill = header_fill_hr
+        elif col_idx_new in [16, 17, 18]:
+            c.fill = header_fill_sys
+        else:
+            c.fill = header_fill_res
+
     existing_docs = {}
     async for doc in db[COLLECTION].find({}, {
         "employeeCode": 1,
         "fullName": 1,
+        "isBmkSystemExist": 1,
         "tpbankInfo": 1,
         "bmkHrInfo": 1,
         "bmkSystemInfo": 1,
@@ -918,7 +1148,9 @@ async def reconcile_tpbank_data(
     updated_count = 0
     total_processed = 0
 
-    for row in rows[header_row_idx + 1:]:
+    for r_offset, row in enumerate(rows[header_row_idx + 1:]):
+        excel_row_num = header_row_idx + 2 + r_offset
+
         if not row or all(cell is None or str(cell).strip() == "" for cell in row):
             continue
 
@@ -961,10 +1193,12 @@ async def reconcile_tpbank_data(
             contracts = tpbank_info.get("contracts") or []
             bmk_hr_info = existing_doc.get("bmkHrInfo") or {}
             bmk_system_info = existing_doc.get("bmkSystemInfo") or {}
+            is_sys_exist = existing_doc.get("isBmkSystemExist", False)
+            hr_bank_cnt = tpbank_info.get("hrContractCount")
 
             result_obj = _calculate_reconciliation_result(
                 estimated_contract_count=contract_count,
-                hr_contract_count=tpbank_info.get("hrContractCount"),
+                hr_contract_count=hr_bank_cnt,
                 bmk_hr_info=bmk_hr_info,
                 bmk_system_info=bmk_system_info,
                 employment_status=employment_status,
@@ -972,7 +1206,7 @@ async def reconcile_tpbank_data(
 
             new_tpbank_info = {
                 "estimatedContractCount": contract_count,
-                "hrContractCount": tpbank_info.get("hrContractCount"),
+                "hrContractCount": hr_bank_cnt,
                 "contracts": contracts,
             }
             update_set = {
@@ -995,7 +1229,7 @@ async def reconcile_tpbank_data(
             )
         else:
             created_count += 1
-            existing_docs[employee_code] = {"employeeCode": employee_code, "fullName": full_name}
+            existing_docs[employee_code] = {"employeeCode": employee_code, "fullName": full_name, "isBmkSystemExist": False}
             new_tpbank_info = {
                 "estimatedContractCount": contract_count,
                 "hrContractCount": None,
@@ -1007,6 +1241,11 @@ async def reconcile_tpbank_data(
                 "liquidationCount": 0,
                 "taxCommitmentCount": 0,
             }
+            bmk_hr_info = empty_info
+            bmk_system_info = empty_info
+            is_sys_exist = False
+            hr_bank_cnt = None
+
             result_obj = _calculate_reconciliation_result(
                 estimated_contract_count=contract_count,
                 hr_contract_count=None,
@@ -1046,6 +1285,47 @@ async def reconcile_tpbank_data(
                 )
             )
 
+        # Điền các cột kết quả đối soát vào Excel cho row hiện tại
+        hr_cnt_val = (bmk_hr_info or {}).get("contractCount", 0) or 0
+        hr_idcard_val = (bmk_hr_info or {}).get("idCardCount", 0) or 0
+        hr_liq_val = (bmk_hr_info or {}).get("liquidationCount", 0) or 0
+
+        sys_cnt_val = (bmk_system_info or {}).get("contractCount", 0) or 0 if is_sys_exist else "Nhân viên không tồn tại"
+        sys_idcard_val = (bmk_system_info or {}).get("idCardCount", 0) or 0 if is_sys_exist else "Nhân viên không tồn tại"
+        sys_liq_val = (bmk_system_info or {}).get("liquidationCount", 0) or 0 if is_sys_exist else "Nhân viên không tồn tại"
+
+        contract_res = result_obj.get("contract")
+        idcard_res = result_obj.get("idCard")
+        liq_res = result_obj.get("liquidation")
+
+        contract_text = "Khớp" if contract_res == "success" else ("Lệch Bank" if contract_res == "warn" else "Lệch")
+        contract_font = font_warn if contract_res == "warn" else (font_match if contract_res == "success" else font_mismatch)
+
+        idcard_text = "Khớp" if idcard_res == "success" else "Lệch"
+        idcard_font = font_match if idcard_res == "success" else font_mismatch
+
+        liq_text = "Khớp" if liq_res == "success" else "Lệch"
+        liq_font = font_match if liq_res == "success" else font_mismatch
+
+        row_cells = [
+            (11, contract_count, data_font),
+            (12, hr_bank_cnt if hr_bank_cnt is not None else "", data_font),
+            (13, hr_cnt_val, data_font),
+            (14, hr_idcard_val, data_font),
+            (15, hr_liq_val, data_font),
+            (16, sys_cnt_val, data_font if is_sys_exist else font_not_exist),
+            (17, sys_idcard_val, data_font if is_sys_exist else font_not_exist),
+            (18, sys_liq_val, data_font if is_sys_exist else font_not_exist),
+            (19, contract_text, contract_font),
+            (20, idcard_text, idcard_font),
+            (21, liq_text, liq_font),
+        ]
+        for col_num, val, c_font in row_cells:
+            cell = ws.cell(row=excel_row_num, column=col_num, value=val)
+            cell.font = c_font
+            cell.alignment = data_align_center
+            cell.border = thin_border
+
         total_processed += 1
 
         if len(operations) >= 500:
@@ -1054,6 +1334,92 @@ async def reconcile_tpbank_data(
 
     if operations:
         await db[COLLECTION].bulk_write(operations, ordered=False)
+
+    # Định dạng độ rộng các cột mới
+    col_widths = {
+        11: 14, 12: 14,
+        13: 14, 14: 15, 15: 15,
+        16: 22, 17: 22, 18: 22,
+        19: 15, 20: 15, 21: 15,
+    }
+    for col_num, width in col_widths.items():
+        ws.column_dimensions[get_column_letter(col_num)].width = width
+
+    # Lưu workbook kết quả đối soát vào buffer và upload lên S3 MinIO
+    result_file_info = None
+    try:
+        output_stream = BytesIO()
+        wb.save(output_stream)
+        wb.close()
+        result_content = output_stream.getvalue()
+
+        clean_name = re.sub(r"[^\w\.-]", "_", file.filename)
+        result_filename = f"ket_qua_doi_soat_{clean_name}"
+        result_s3_key = f"reconcile_results/{now_ts}_{clean_name}"
+        upload_to_s3(result_content, result_s3_key)
+        result_file_info = {
+            "filename": result_filename,
+            "s3Key": result_s3_key,
+            "s3Bucket": s3_bucket,
+            "fileSize": len(result_content),
+        }
+    except Exception as e:
+        logger.error(f"Không thể lưu file kết quả đối soát lên S3 MinIO: {str(e)}")
+
+    total_rows_in_file = max(0, len(rows) - (header_row_idx + 1))
+    success_rows = total_processed
+    failed_rows = max(0, total_rows_in_file - success_rows)
+
+    # Thống kê kết quả đối soát tổng hợp của phiên này
+    total_success = await db[COLLECTION].count_documents({
+        "isSynced": True,
+        "result.contract": "success",
+        "result.idCard": "success",
+        "result.liquidation": "success",
+    })
+    total_warn_bank = await db[COLLECTION].count_documents({
+        "isSynced": True,
+        "result.contract": "warn",
+    })
+    total_mismatch_contract = await db[COLLECTION].count_documents({
+        "isSynced": True,
+        "result.contract": "failed",
+    })
+    total_mismatch_idcard = await db[COLLECTION].count_documents({
+        "isSynced": True,
+        "result.idCard": "failed",
+    })
+    total_mismatch_liquidation = await db[COLLECTION].count_documents({
+        "isSynced": True,
+        "result.liquidation": "failed",
+    })
+
+    # Lưu lịch sử đối soát vào collection bmk_ctv_reconciliation_history
+    uploaded_by = current_user.get("name") or current_user.get("username", "Unknown")
+    username = current_user.get("username", "Unknown")
+    history_doc = {
+        "filename": file.filename,
+        "s3Key": s3_key,
+        "s3Bucket": s3_bucket,
+        "fileSize": len(content),
+        "uploadedBy": uploaded_by,
+        "username": username,
+        "totalRows": total_rows_in_file,
+        "successRows": success_rows,
+        "failedRows": failed_rows,
+        "status": "success",
+        "message": f"Đối soát thành công {total_processed} bản ghi từ file TP Bank (Tạo mới: {created_count}, Cập nhật: {updated_count})",
+        "stats": {
+            "totalSuccess": total_success,
+            "totalWarnBank": total_warn_bank,
+            "totalMismatchContract": total_mismatch_contract,
+            "totalMismatchIdCard": total_mismatch_idcard,
+            "totalMismatchLiquidation": total_mismatch_liquidation,
+        },
+        "resultFile": result_file_info,
+        "createdAt": now,
+    }
+    await db[HISTORY_COLLECTION].insert_one(history_doc)
 
     return {
         "status": "success",
