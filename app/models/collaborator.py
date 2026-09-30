@@ -44,6 +44,7 @@ class CollaboratorBase(BaseModel):
     email: str = ""
     phone: str = ""
     address: str = ""
+    noted: Optional[str] = ""
     checklist: Checklist = Field(default_factory=Checklist)
 
 class CollaboratorCreate(CollaboratorBase):
@@ -67,6 +68,7 @@ class CollaboratorResponse(CollaboratorBase):
                 "email": "do.xuan.yen1@example.com",
                 "phone": "0910000137",
                 "address": "188 Trần Phú, TP. Nha Trang, Khánh Hòa",
+                "noted": "Thông tin lưu ý",
                 "checklist": {
                     "cccd": {"checked": True, "file": None},
                     "ckt": {"checked": False, "file": None},

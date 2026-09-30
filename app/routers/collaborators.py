@@ -88,6 +88,8 @@ def _cell_str(row, idx) -> str:
 def _to_response(doc: dict) -> dict:
     doc = dict(doc)
     doc["employeeCode"] = doc["_id"]
+    if "noted" not in doc or doc["noted"] is None:
+        doc["noted"] = ""
     return doc
 
 def _actor_name(current_user: dict) -> str:
@@ -270,9 +272,9 @@ async def export_collaborators_doisoat(db=Depends(get_db), current_user: dict = 
                 start_date = getattr(last_contract, "startDate", "") or ""
                 end_date = getattr(last_contract, "endDate", "") or ""
 
-        # Bản scan: Hợp đồng dịch vụ có file upload
+        # Bản scan: Hợp đồng dịch vụ có file upload (số lượng file)
         hddv_files = hddv.get("files") or []
-        hddv_scan = "X" if hddv_files else ""
+        hddv_scan = len(hddv_files) if hddv_files else ""
 
         # CCCD
         cccd_excel = "X" if cccd.get("checked") else ""
@@ -479,16 +481,52 @@ async def import_collaborators(
                     updates[f"checklist.{field}.checked"] = val
 
                 if start_date_idx is not None or end_date_idx is not None:
-                    hddv = existing.get("checklist", {}).get("hddv") or {}
-                    contracts = hddv.get("contract_date") or []
-                    last_contract = dict(contracts[-1]) if contracts and isinstance(contracts[-1], dict) else {}
-                    if start_val is not _UNSET:
-                        if start_val is not None or not last_contract.get("startDate"):
-                            last_contract["startDate"] = start_val
-                    if end_val is not _UNSET:
-                        if end_val is not None or not last_contract.get("endDate"):
-                            last_contract["endDate"] = end_val
-                    updates["checklist.hddv.contract_date"] = (contracts[:-1] if contracts else []) + [last_contract]
+                    new_start = start_val if start_val is not _UNSET else None
+                    new_end = end_val if end_val is not _UNSET else None
+
+                    # Chỉ xử lý kiểm tra / thêm mới hợp đồng dịch vụ nếu có ít nhất 1 giá trị ngày (không phải cả 2 đều rỗng)
+                    if new_start is not None or new_end is not None:
+                        hddv = existing.get("checklist", {}).get("hddv") or {}
+                        contracts = hddv.get("contract_date") or []
+
+                        def _norm_date(val):
+                            if not val:
+                                return None
+                            s = str(val).strip()
+                            return s.split("T")[0] if "T" in s else s if s else None
+
+                        norm_new_start = _norm_date(new_start)
+                        norm_new_end = _norm_date(new_end)
+
+                        # Rule: Kiểm tra xem cặp (startDate, endDate) đã tồn tại trong danh sách hợp đồng chưa
+                        already_exists = False
+                        for c in contracts:
+                            if isinstance(c, dict):
+                                c_start = c.get("startDate")
+                                c_end = c.get("endDate")
+                            else:
+                                c_start = getattr(c, "startDate", None)
+                                c_end = getattr(c, "endDate", None)
+
+                            if _norm_date(c_start) == norm_new_start and _norm_date(c_end) == norm_new_end:
+                                already_exists = True
+                                break
+
+                        # Nếu chưa tồn tại: bổ sung vào danh sách hợp đồng (nếu đã tồn tại: không thêm mới)
+                        if not already_exists:
+                            new_contract_item = {"startDate": new_start, "endDate": new_end}
+                            # Nếu danh sách hiện tại chỉ có đúng 1 hợp đồng rỗng (chưa có ngày bắt đầu và kết thúc)
+                            # thì thay thế phần tử rỗng đó bằng hợp đồng mới
+                            if (
+                                len(contracts) == 1
+                                and isinstance(contracts[0], dict)
+                                and not _norm_date(contracts[0].get("startDate"))
+                                and not _norm_date(contracts[0].get("endDate"))
+                            ):
+                                new_contracts = [new_contract_item]
+                            else:
+                                new_contracts = list(contracts) + [new_contract_item]
+                            updates["checklist.hddv.contract_date"] = new_contracts
 
                 if liquidation_val is not _UNSET:
                     bbtl = existing.get("checklist", {}).get("bbtl") or {}
@@ -676,10 +714,12 @@ async def create_collaborator(payload: CollaboratorCreate, db=Depends(get_db), c
     doc["createdAt"] = now
     doc["updatedAt"] = now
     await db[COLLECTION].insert_one(doc)
+    noted_val = (payload.noted or "").strip()
+    noted_suffix = f" (Ghi chú: '{noted_val}')" if noted_val else ""
     await record_activity(
         db, action="create_collaborator", result="success", full_name=full_name,
         username=current_user.get("username", ""),
-        message=f"{full_name} tạo thành công hồ sơ cho cộng tác viên mã {employee_code}",
+        message=f"{full_name} tạo thành công hồ sơ cho cộng tác viên mã {employee_code}{noted_suffix}",
         employee_code=employee_code,
     )
     return _to_response(doc)
@@ -722,12 +762,54 @@ async def update_collaborator(employee_code: str, payload: CollaboratorUpdate, d
     doc["createdAt"] = existing["createdAt"]
     doc["updatedAt"] = _now()
 
+    # Kiểm tra các thay đổi về thông tin cá nhân để ghi log chi tiết
+    personal_fields = {
+        "fullName": "Họ tên",
+        "taxCode": "Mã số thuế",
+        "dob": "Ngày sinh",
+        "idNumber": "Số CCCD",
+        "email": "Email",
+        "phone": "Số điện thoại",
+        "address": "Địa chỉ",
+        "noted": "Ghi chú/Lưu ý",
+    }
+    personal_changes = []
+    for field_key, field_name in personal_fields.items():
+        old_val = existing.get(field_key)
+        new_val = doc.get(field_key)
+        old_str = (str(old_val).strip()) if old_val is not None else ""
+        new_str = (str(new_val).strip()) if new_val is not None else ""
+        if old_str != new_str:
+            if field_key == "noted":
+                if not old_str and new_str:
+                    personal_changes.append(f"thêm Ghi chú '{new_str}'")
+                elif old_str and not new_str:
+                    personal_changes.append("xóa Ghi chú")
+                else:
+                    personal_changes.append(f"Ghi chú '{old_str}' -> '{new_str}'")
+            else:
+                if old_str and new_str:
+                    personal_changes.append(f"{field_name} ('{old_str}' -> '{new_str}')")
+                elif new_str:
+                    personal_changes.append(f"{field_name}: '{new_str}'")
+                else:
+                    personal_changes.append(f"xóa {field_name}")
+
     if new_code != employee_code:
         await db[COLLECTION].delete_one({"_id": employee_code})
     await db[COLLECTION].replace_one({"_id": new_code}, doc, upsert=True)
+
+    if personal_changes:
+        changes_str = "; ".join(personal_changes)
+        log_msg = f"{full_name} đã cập nhật thông tin cá nhân cho cộng tác viên mã {new_code} ({changes_str})"
+    else:
+        log_msg = f"{full_name} cập nhật thành công hồ sơ cho cộng tác viên mã {new_code}"
+
+    logger.info(f"User '{username}' cập nhật CTV '{new_code}': {personal_changes if personal_changes else 'Không đổi thông tin cá nhân'}")
+
     await record_activity(
         db, action="update_collaborator", result="success", full_name=full_name, username=username,
-        message=f"{full_name} cập nhật thành công hồ sơ cho cộng tác viên mã {new_code}",
+        message=log_msg,
         employee_code=new_code,
     )
     return _to_response(doc)

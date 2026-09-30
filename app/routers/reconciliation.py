@@ -933,7 +933,9 @@ def _calculate_tpbank_contract_count(onboard_dt: Optional[datetime], offboard_dt
         return 0
 
     full_months = (end_dt.year - onboard_dt.year) * 12 + (end_dt.month - onboard_dt.month)
-    if end_dt.day < onboard_dt.day:
+    # Quy tắc: nếu ngày kết thúc chưa vượt quá ngày vào (<= onboard_dt.day),
+    # tức vừa chạm đúng mốc tròn tháng, thì chưa phát sinh sang hợp đồng tiếp theo
+    if end_dt.day <= onboard_dt.day:
         full_months -= 1
 
     if full_months < 0:
