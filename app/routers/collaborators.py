@@ -50,6 +50,7 @@ PROFILE_TEXT_COLUMNS = [
     ("Email", "email"),
     ("Số điện thoại", "phone"),
     ("Địa chỉ", "address"),
+    ("Người bàn giao", "handoverPerson"),
 ]
 DOB_LABEL = "Ngày sinh"
 
@@ -90,6 +91,8 @@ def _to_response(doc: dict) -> dict:
     doc["employeeCode"] = doc["_id"]
     if "noted" not in doc or doc["noted"] is None:
         doc["noted"] = ""
+    if "handoverPerson" not in doc or doc["handoverPerson"] is None:
+        doc["handoverPerson"] = ""
     return doc
 
 def _actor_name(current_user: dict) -> str:
@@ -180,6 +183,7 @@ async def export_collaborators(db=Depends(get_db), current_user: dict = Depends(
             "Đã nộp" if cccd.get("checked") else "",
             "Đã nộp" if ckt.get("checked") else "",
             bbtl.get("date") or "",
+            doc.get("handoverPerson") or "",
         ]
 
         for col_idx, val in enumerate(row_values, start=1):
@@ -198,7 +202,7 @@ async def export_collaborators(db=Depends(get_db), current_user: dict = Depends(
 
     # Clear remaining rows in the template if they are beyond our data rows
     for r in range(row_idx, ws.max_row + 1):
-        for c in range(1, 15):
+        for c in range(1, 16):
             cell = ws.cell(row=r, column=c)
             cell.value = None
             cell.border = Border()
@@ -407,19 +411,34 @@ async def import_collaborators(
             for col_cells in zip(*header_row_slices)
         ]
 
-        if EMPLOYEE_CODE_LABEL not in header:
+        def find_col_idx(lbl):
+            for i, h in enumerate(header):
+                if h and h.strip().lower() == lbl.strip().lower():
+                    return i
+            return None
+
+        code_idx = find_col_idx(EMPLOYEE_CODE_LABEL)
+        if code_idx is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Không tìm thấy cột 'Mã nhân viên' trong file, vui lòng dùng đúng file mẫu",
             )
-        code_idx = header.index(EMPLOYEE_CODE_LABEL)
-        start_date_idx = header.index(START_DATE_LABEL) if START_DATE_LABEL in header else None
-        end_date_idx = header.index(END_DATE_LABEL) if END_DATE_LABEL in header else None
-        liquidation_idx = header.index(LIQUIDATION_DATE_LABEL) if LIQUIDATION_DATE_LABEL in header else None
+        start_date_idx = find_col_idx(START_DATE_LABEL)
+        end_date_idx = find_col_idx(END_DATE_LABEL)
+        liquidation_idx = find_col_idx(LIQUIDATION_DATE_LABEL)
+        dob_idx = find_col_idx(DOB_LABEL)
 
-        column_indices = {field: header.index(label) for label, field in CHECKLIST_COLUMNS if label in header}
-        profile_indices = {field: header.index(label) for label, field in PROFILE_TEXT_COLUMNS if label in header}
-        dob_idx = header.index(DOB_LABEL) if DOB_LABEL in header else None
+        column_indices = {}
+        for label, field in CHECKLIST_COLUMNS:
+            idx = find_col_idx(label)
+            if idx is not None:
+                column_indices[field] = idx
+
+        profile_indices = {}
+        for label, field in PROFILE_TEXT_COLUMNS:
+            idx = find_col_idx(label)
+            if idx is not None:
+                profile_indices[field] = idx
 
         updated: List[str] = []
         created: List[str] = []
@@ -561,6 +580,8 @@ async def import_collaborators(
                     "email": _cell_str(row, profile_indices.get("email")),
                     "phone": _cell_str(row, profile_indices.get("phone")),
                     "address": _cell_str(row, profile_indices.get("address")),
+                    "noted": "",
+                    "handoverPerson": _cell_str(row, profile_indices.get("handoverPerson")),
                     "checklist": {
                         "cccd": {
                             "checked": checklist_values.get("cccd", False),
@@ -772,6 +793,7 @@ async def update_collaborator(employee_code: str, payload: CollaboratorUpdate, d
         "phone": "Số điện thoại",
         "address": "Địa chỉ",
         "noted": "Ghi chú/Lưu ý",
+        "handoverPerson": "Người bàn giao",
     }
     personal_changes = []
     for field_key, field_name in personal_fields.items():
@@ -780,13 +802,13 @@ async def update_collaborator(employee_code: str, payload: CollaboratorUpdate, d
         old_str = (str(old_val).strip()) if old_val is not None else ""
         new_str = (str(new_val).strip()) if new_val is not None else ""
         if old_str != new_str:
-            if field_key == "noted":
+            if field_key in ("noted", "handoverPerson"):
                 if not old_str and new_str:
-                    personal_changes.append(f"thêm Ghi chú '{new_str}'")
+                    personal_changes.append(f"thêm {field_name} '{new_str}'")
                 elif old_str and not new_str:
-                    personal_changes.append("xóa Ghi chú")
+                    personal_changes.append(f"xóa {field_name}")
                 else:
-                    personal_changes.append(f"Ghi chú '{old_str}' -> '{new_str}'")
+                    personal_changes.append(f"{field_name} '{old_str}' -> '{new_str}'")
             else:
                 if old_str and new_str:
                     personal_changes.append(f"{field_name} ('{old_str}' -> '{new_str}')")
