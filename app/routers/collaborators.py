@@ -54,6 +54,7 @@ PROFILE_TEXT_COLUMNS = [
 ]
 DOB_LABEL = "Ngày sinh"
 HANDOVER_DATE_LABEL = "Ngày bàn giao"
+NOTED_LABEL = "Ghi chú"
 
 DATE_TEXT_FORMATS = ["%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d", "%Y/%m/%d", "%d/%m/%y", "%d-%m-%y"]
 
@@ -188,6 +189,7 @@ async def export_collaborators(db=Depends(get_db), current_user: dict = Depends(
             bbtl.get("date") or "",
             doc.get("handoverPerson") or "",
             doc.get("handoverDate") or "",
+            doc.get("noted") or "",
         ]
 
         for col_idx, val in enumerate(row_values, start=1):
@@ -206,7 +208,7 @@ async def export_collaborators(db=Depends(get_db), current_user: dict = Depends(
 
     # Clear remaining rows in the template if they are beyond our data rows
     for r in range(row_idx, ws.max_row + 1):
-        for c in range(1, 17):
+        for c in range(1, 18):
             cell = ws.cell(row=r, column=c)
             cell.value = None
             cell.border = Border()
@@ -432,6 +434,7 @@ async def import_collaborators(
         liquidation_idx = find_col_idx(LIQUIDATION_DATE_LABEL)
         dob_idx = find_col_idx(DOB_LABEL)
         handover_date_idx = find_col_idx(HANDOVER_DATE_LABEL)
+        noted_idx = find_col_idx(NOTED_LABEL)
 
         column_indices = {}
         for label, field in CHECKLIST_COLUMNS:
@@ -574,6 +577,17 @@ async def import_collaborators(
                     if handover_date_val is not _UNSET and handover_date_val is not None:
                         updates["handoverDate"] = handover_date_val
 
+                if noted_idx is not None:
+                    new_noted = _cell_str(row, noted_idx)
+                    if new_noted:
+                        old_noted = (existing.get("noted") or "").strip()
+                        if old_noted:
+                            existing_lines = [line.strip() for line in old_noted.splitlines() if line.strip()]
+                            if new_noted not in existing_lines:
+                                updates["noted"] = f"{old_noted}\n{new_noted}"
+                        else:
+                            updates["noted"] = new_noted
+
                 updates["updatedAt"] = _now()
                 await db[COLLECTION].update_one({"_id": employee_code}, {"$set": updates})
                 updated.append(employee_code)
@@ -581,6 +595,7 @@ async def import_collaborators(
                 now_ts = _now()
                 dob_val = parse_cell_date(dob_idx)
                 handover_date_val = parse_cell_date(handover_date_idx)
+                noted_val = _cell_str(row, noted_idx) if noted_idx is not None else ""
                 new_doc = {
                     "_id": employee_code,
                     "employeeCode": employee_code,
@@ -591,7 +606,7 @@ async def import_collaborators(
                     "email": _cell_str(row, profile_indices.get("email")),
                     "phone": _cell_str(row, profile_indices.get("phone")),
                     "address": _cell_str(row, profile_indices.get("address")),
-                    "noted": "",
+                    "noted": noted_val,
                     "handoverPerson": _cell_str(row, profile_indices.get("handoverPerson")),
                     "handoverDate": None if handover_date_val is _UNSET else handover_date_val,
                     "checklist": {
