@@ -1368,7 +1368,11 @@ async def reconcile_tpbank_data(
     except Exception as e:
         logger.error(f"Không thể lưu file kết quả đối soát lên S3 MinIO: {str(e)}")
 
-    total_rows_in_file = max(0, len(rows) - (header_row_idx + 1))
+    non_empty_rows = [
+        r for r in rows[header_row_idx + 1:]
+        if r and any(cell is not None and str(cell).strip() != "" for cell in r)
+    ]
+    total_rows_in_file = len(non_empty_rows)
     success_rows = total_processed
     failed_rows = max(0, total_rows_in_file - success_rows)
 

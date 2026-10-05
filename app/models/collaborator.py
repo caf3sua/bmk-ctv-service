@@ -35,6 +35,11 @@ class Checklist(BaseModel):
     hddv: HddvChecklist = Field(default_factory=HddvChecklist)
     bbtl: BbtlChecklist = Field(default_factory=BbtlChecklist)
 
+class HandoverInfoItem(BaseModel):
+    handoverDate: str
+    handoverPerson: Optional[str] = ""
+    createdAt: Optional[str] = None
+
 class CollaboratorBase(BaseModel):
     employeeCode: str
     fullName: str = ""
@@ -45,8 +50,7 @@ class CollaboratorBase(BaseModel):
     phone: str = ""
     address: str = ""
     noted: Optional[str] = ""
-    handoverPerson: Optional[str] = ""
-    handoverDate: Optional[str] = None
+    handoverInfo: List[HandoverInfoItem] = Field(default_factory=list)
     checklist: Checklist = Field(default_factory=Checklist)
 
 class CollaboratorCreate(CollaboratorBase):
@@ -71,8 +75,13 @@ class CollaboratorResponse(CollaboratorBase):
                 "phone": "0910000137",
                 "address": "188 Trần Phú, TP. Nha Trang, Khánh Hòa",
                 "noted": "Thông tin lưu ý",
-                "handoverPerson": "Nguyễn Văn B",
-                "handoverDate": "2024-12-15",
+                "handoverInfo": [
+                    {
+                        "handoverDate": "2024-12-15",
+                        "handoverPerson": "Nguyễn Văn B",
+                        "createdAt": "2024-12-15T02:00:00.000Z"
+                    }
+                ],
                 "checklist": {
                     "cccd": {"checked": True, "file": None},
                     "ckt": {"checked": False, "file": None},

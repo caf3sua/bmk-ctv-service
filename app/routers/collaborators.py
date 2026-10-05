@@ -50,7 +50,6 @@ PROFILE_TEXT_COLUMNS = [
     ("Email", "email"),
     ("Số điện thoại", "phone"),
     ("Địa chỉ", "address"),
-    ("Người bàn giao", "handoverPerson"),
 ]
 DOB_LABEL = "Ngày sinh"
 HANDOVER_DATE_LABEL = "Ngày bàn giao"
@@ -93,10 +92,14 @@ def _to_response(doc: dict) -> dict:
     doc["employeeCode"] = doc["_id"]
     if "noted" not in doc or doc["noted"] is None:
         doc["noted"] = ""
-    if "handoverPerson" not in doc or doc["handoverPerson"] is None:
-        doc["handoverPerson"] = ""
-    if "handoverDate" not in doc:
-        doc["handoverDate"] = None
+
+    raw_handover_info = doc.get("handoverInfo")
+    if not isinstance(raw_handover_info, list):
+        raw_handover_info = []
+
+    doc["handoverInfo"] = raw_handover_info
+    doc.pop("handoverDate", None)
+    doc.pop("handoverPerson", None)
     return doc
 
 def _actor_name(current_user: dict) -> str:
@@ -172,6 +175,13 @@ async def export_collaborators(db=Depends(get_db), current_user: dict = Depends(
                 start_date = getattr(last_contract, "startDate", "") or ""
                 end_date = getattr(last_contract, "endDate", "") or ""
 
+        handover_info = doc.get("handoverInfo") or []
+        sorted_ho = sorted(
+            [h for h in handover_info if isinstance(h, dict) and h.get("handoverDate")],
+            key=lambda x: str(x.get("handoverDate"))
+        )
+        latest_ho = sorted_ho[-1] if sorted_ho else {}
+
         row_values = [
             stt,
             doc.get("_id") or doc.get("employeeCode", ""),
@@ -187,8 +197,8 @@ async def export_collaborators(db=Depends(get_db), current_user: dict = Depends(
             "Đã nộp" if cccd.get("checked") else "",
             "Đã nộp" if ckt.get("checked") else "",
             bbtl.get("date") or "",
-            doc.get("handoverPerson") or "",
-            doc.get("handoverDate") or "",
+            latest_ho.get("handoverPerson") or "",
+            latest_ho.get("handoverDate") or "",
             doc.get("noted") or "",
         ]
 
@@ -562,6 +572,8 @@ async def import_collaborators(
 
                 # Cập nhật thông tin hồ sơ nếu có giá trị mới trong dòng hiện tại
                 for label, field in PROFILE_TEXT_COLUMNS:
+                    if field == "handoverPerson":
+                        continue
                     idx = profile_indices.get(field)
                     val = _cell_str(row, idx)
                     if val:
@@ -572,10 +584,32 @@ async def import_collaborators(
                     if dob_val is not _UNSET and dob_val is not None:
                         updates["dob"] = dob_val
 
-                if handover_date_idx is not None:
-                    handover_date_val = parse_cell_date(handover_date_idx)
-                    if handover_date_val is not _UNSET and handover_date_val is not None:
-                        updates["handoverDate"] = handover_date_val
+                # Xử lý thông tin bàn giao (handoverInfo là list các object {handoverDate, handoverPerson, createdAt})
+                handover_person_val = _cell_str(row, find_col_idx("Người bàn giao")) if find_col_idx("Người bàn giao") is not None else ""
+                handover_date_val = parse_cell_date(handover_date_idx) if handover_date_idx is not None else _UNSET
+
+                existing_handover_info = list(existing.get("handoverInfo") or [])
+
+                if handover_date_val is not _UNSET and handover_date_val is not None:
+                    found_item = None
+                    for item in existing_handover_info:
+                        if isinstance(item, dict) and item.get("handoverDate") == handover_date_val:
+                            found_item = item
+                            break
+
+                    if found_item:
+                        if handover_person_val:
+                            found_item["handoverPerson"] = handover_person_val
+                        if not found_item.get("createdAt"):
+                            found_item["createdAt"] = _now()
+                    else:
+                        existing_handover_info.append({
+                            "handoverDate": handover_date_val,
+                            "handoverPerson": handover_person_val,
+                            "createdAt": _now()
+                        })
+
+                    updates["handoverInfo"] = existing_handover_info
 
                 if noted_idx is not None:
                     new_noted = _cell_str(row, noted_idx)
@@ -594,8 +628,18 @@ async def import_collaborators(
             else:
                 now_ts = _now()
                 dob_val = parse_cell_date(dob_idx)
-                handover_date_val = parse_cell_date(handover_date_idx)
+                handover_date_val = parse_cell_date(handover_date_idx) if handover_date_idx is not None else _UNSET
+                handover_person_val = _cell_str(row, find_col_idx("Người bàn giao")) if find_col_idx("Người bàn giao") is not None else ""
                 noted_val = _cell_str(row, noted_idx) if noted_idx is not None else ""
+
+                handover_info_list = []
+                if handover_date_val is not _UNSET and handover_date_val is not None:
+                    handover_info_list.append({
+                        "handoverDate": handover_date_val,
+                        "handoverPerson": handover_person_val,
+                        "createdAt": now_ts
+                    })
+
                 new_doc = {
                     "_id": employee_code,
                     "employeeCode": employee_code,
@@ -607,8 +651,7 @@ async def import_collaborators(
                     "phone": _cell_str(row, profile_indices.get("phone")),
                     "address": _cell_str(row, profile_indices.get("address")),
                     "noted": noted_val,
-                    "handoverPerson": _cell_str(row, profile_indices.get("handoverPerson")),
-                    "handoverDate": None if handover_date_val is _UNSET else handover_date_val,
+                    "handoverInfo": handover_info_list,
                     "checklist": {
                         "cccd": {
                             "checked": checklist_values.get("cccd", False),
@@ -734,6 +777,28 @@ async def get_collaborator(employee_code: str, db=Depends(get_db), current_user:
         )
     return _to_response(doc)
 
+def _normalize_handover_info(doc: dict) -> dict:
+    handover_info = doc.get("handoverInfo") or []
+    normalized = []
+    now_str = _now()
+    for item in handover_info:
+        if isinstance(item, dict) and item.get("handoverDate"):
+            normalized.append({
+                "handoverDate": item["handoverDate"],
+                "handoverPerson": item.get("handoverPerson") or "",
+                "createdAt": item.get("createdAt") or now_str
+            })
+        elif hasattr(item, "handoverDate") and getattr(item, "handoverDate"):
+            normalized.append({
+                "handoverDate": getattr(item, "handoverDate"),
+                "handoverPerson": getattr(item, "handoverPerson", "") or "",
+                "createdAt": getattr(item, "createdAt", None) or now_str
+            })
+    doc["handoverInfo"] = normalized
+    doc.pop("handoverDate", None)
+    doc.pop("handoverPerson", None)
+    return doc
+
 @router.post("", response_model=CollaboratorResponse, status_code=status.HTTP_201_CREATED)
 async def create_collaborator(payload: CollaboratorCreate, db=Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Create a new collaborator profile."""
@@ -757,6 +822,7 @@ async def create_collaborator(payload: CollaboratorCreate, db=Depends(get_db), c
 
     now = _now()
     doc = payload.model_dump()
+    doc = _normalize_handover_info(doc)
     doc["employeeCode"] = employee_code
     doc["_id"] = employee_code
     doc["createdAt"] = now
@@ -805,6 +871,7 @@ async def update_collaborator(employee_code: str, payload: CollaboratorUpdate, d
             )
 
     doc = payload.model_dump()
+    doc = _normalize_handover_info(doc)
     doc["employeeCode"] = new_code
     doc["_id"] = new_code
     doc["createdAt"] = existing["createdAt"]
@@ -820,8 +887,6 @@ async def update_collaborator(employee_code: str, payload: CollaboratorUpdate, d
         "phone": "Số điện thoại",
         "address": "Địa chỉ",
         "noted": "Ghi chú/Lưu ý",
-        "handoverPerson": "Người bàn giao",
-        "handoverDate": "Ngày bàn giao",
     }
     personal_changes = []
     for field_key, field_name in personal_fields.items():
