@@ -53,6 +53,7 @@ PROFILE_TEXT_COLUMNS = [
     ("Người bàn giao", "handoverPerson"),
 ]
 DOB_LABEL = "Ngày sinh"
+HANDOVER_DATE_LABEL = "Ngày bàn giao"
 
 DATE_TEXT_FORMATS = ["%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d", "%Y/%m/%d", "%d/%m/%y", "%d-%m-%y"]
 
@@ -93,6 +94,8 @@ def _to_response(doc: dict) -> dict:
         doc["noted"] = ""
     if "handoverPerson" not in doc or doc["handoverPerson"] is None:
         doc["handoverPerson"] = ""
+    if "handoverDate" not in doc:
+        doc["handoverDate"] = None
     return doc
 
 def _actor_name(current_user: dict) -> str:
@@ -184,6 +187,7 @@ async def export_collaborators(db=Depends(get_db), current_user: dict = Depends(
             "Đã nộp" if ckt.get("checked") else "",
             bbtl.get("date") or "",
             doc.get("handoverPerson") or "",
+            doc.get("handoverDate") or "",
         ]
 
         for col_idx, val in enumerate(row_values, start=1):
@@ -192,7 +196,7 @@ async def export_collaborators(db=Depends(get_db), current_user: dict = Depends(
             cell.border = thin_border
 
             # Alignment formatting
-            if col_idx in [1, 2, 4, 5, 6, 8, 10, 11, 12, 13, 14]:
+            if col_idx in [1, 2, 4, 5, 6, 8, 10, 11, 12, 13, 14, 16]:
                 cell.alignment = Alignment(horizontal="center", vertical="center")
             else:
                 cell.alignment = Alignment(horizontal="left", vertical="center")
@@ -202,7 +206,7 @@ async def export_collaborators(db=Depends(get_db), current_user: dict = Depends(
 
     # Clear remaining rows in the template if they are beyond our data rows
     for r in range(row_idx, ws.max_row + 1):
-        for c in range(1, 16):
+        for c in range(1, 17):
             cell = ws.cell(row=r, column=c)
             cell.value = None
             cell.border = Border()
@@ -427,6 +431,7 @@ async def import_collaborators(
         end_date_idx = find_col_idx(END_DATE_LABEL)
         liquidation_idx = find_col_idx(LIQUIDATION_DATE_LABEL)
         dob_idx = find_col_idx(DOB_LABEL)
+        handover_date_idx = find_col_idx(HANDOVER_DATE_LABEL)
 
         column_indices = {}
         for label, field in CHECKLIST_COLUMNS:
@@ -564,12 +569,18 @@ async def import_collaborators(
                     if dob_val is not _UNSET and dob_val is not None:
                         updates["dob"] = dob_val
 
+                if handover_date_idx is not None:
+                    handover_date_val = parse_cell_date(handover_date_idx)
+                    if handover_date_val is not _UNSET and handover_date_val is not None:
+                        updates["handoverDate"] = handover_date_val
+
                 updates["updatedAt"] = _now()
                 await db[COLLECTION].update_one({"_id": employee_code}, {"$set": updates})
                 updated.append(employee_code)
             else:
                 now_ts = _now()
                 dob_val = parse_cell_date(dob_idx)
+                handover_date_val = parse_cell_date(handover_date_idx)
                 new_doc = {
                     "_id": employee_code,
                     "employeeCode": employee_code,
@@ -582,6 +593,7 @@ async def import_collaborators(
                     "address": _cell_str(row, profile_indices.get("address")),
                     "noted": "",
                     "handoverPerson": _cell_str(row, profile_indices.get("handoverPerson")),
+                    "handoverDate": None if handover_date_val is _UNSET else handover_date_val,
                     "checklist": {
                         "cccd": {
                             "checked": checklist_values.get("cccd", False),
@@ -794,6 +806,7 @@ async def update_collaborator(employee_code: str, payload: CollaboratorUpdate, d
         "address": "Địa chỉ",
         "noted": "Ghi chú/Lưu ý",
         "handoverPerson": "Người bàn giao",
+        "handoverDate": "Ngày bàn giao",
     }
     personal_changes = []
     for field_key, field_name in personal_fields.items():
@@ -802,7 +815,7 @@ async def update_collaborator(employee_code: str, payload: CollaboratorUpdate, d
         old_str = (str(old_val).strip()) if old_val is not None else ""
         new_str = (str(new_val).strip()) if new_val is not None else ""
         if old_str != new_str:
-            if field_key in ("noted", "handoverPerson"):
+            if field_key in ("noted", "handoverPerson", "handoverDate"):
                 if not old_str and new_str:
                     personal_changes.append(f"thêm {field_name} '{new_str}'")
                 elif old_str and not new_str:

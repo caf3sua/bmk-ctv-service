@@ -46,6 +46,7 @@ class CollaboratorBase(BaseModel):
     address: str = ""
     noted: Optional[str] = ""
     handoverPerson: Optional[str] = ""
+    handoverDate: Optional[str] = None
     checklist: Checklist = Field(default_factory=Checklist)
 
 class CollaboratorCreate(CollaboratorBase):
@@ -71,6 +72,7 @@ class CollaboratorResponse(CollaboratorBase):
                 "address": "188 Trần Phú, TP. Nha Trang, Khánh Hòa",
                 "noted": "Thông tin lưu ý",
                 "handoverPerson": "Nguyễn Văn B",
+                "handoverDate": "2024-12-15",
                 "checklist": {
                     "cccd": {"checked": True, "file": None},
                     "ckt": {"checked": False, "file": None},
