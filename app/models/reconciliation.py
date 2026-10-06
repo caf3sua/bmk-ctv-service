@@ -46,6 +46,7 @@ class ReconciliationRecordBase(BaseModel):
     employmentStatus: Optional[str] = None
     onboardDate: Optional[str] = None
     offboardDate: Optional[str] = None
+    contractExpiryDate: Optional[str] = None  # Ngày hợp đồng đến hạn
     tpbankInfo: TpBankInfo = Field(default_factory=TpBankInfo)
     bmkHrInfo: BmkHrInfo = Field(default_factory=BmkHrInfo)
     bmkSystemInfo: BmkSystemInfo = Field(default_factory=BmkSystemInfo)
@@ -66,6 +67,7 @@ class ReconciliationRecordUpdate(BaseModel):
     employmentStatus: Optional[str] = None
     onboardDate: Optional[str] = None
     offboardDate: Optional[str] = None
+    contractExpiryDate: Optional[str] = None
     tpbankInfo: Optional[TpBankInfo] = None
     bmkHrInfo: Optional[BmkHrInfo] = None
     bmkSystemInfo: Optional[BmkSystemInfo] = None
@@ -90,6 +92,7 @@ class ReconciliationRecordResponse(ReconciliationRecordBase):
                 "employmentStatus": "Hiện diện",
                 "onboardDate": "2024-01-15",
                 "offboardDate": None,
+                "contractExpiryDate": "2024-12-31",
                 "tpbankInfo": {
                     "contracts": [
                         {
@@ -177,4 +180,24 @@ class ReconciliationHistoryListResponse(BaseModel):
     page: int
     pageSize: int
     totalPages: int
+
+
+class ExpiringMovementItem(BaseModel):
+    date: str
+    label: str
+    count: int
+
+class ExpiringBarChartData(BaseModel):
+    days: int
+    totalExpiring: int
+    items: List[ExpiringMovementItem]
+
+class ExpiringPieChartData(BaseModel):
+    active: int
+    resigned: int
+    total: int
+
+class ExpiringContractsStatsResponse(BaseModel):
+    pieChart: ExpiringPieChartData
+    barChart: ExpiringBarChartData
 

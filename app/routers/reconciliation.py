@@ -1,6 +1,6 @@
 import math
 import re
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone, date, timedelta
 from io import BytesIO
 from typing import List, Optional
 from urllib.parse import quote
@@ -27,6 +27,7 @@ from app.models.reconciliation import (
     ReconciliationHistoryStats,
     ReconciliationResultFileInfo,
     ImportHrTpBankResult,
+    ExpiringContractsStatsResponse,
     BmkSystemInfo,
     TpBankInfo,
     BmkHrInfo,
@@ -62,6 +63,7 @@ def _to_response(doc: dict) -> dict:
         "employmentStatus": doc.get("employmentStatus"),
         "onboardDate": doc.get("onboardDate"),
         "offboardDate": doc.get("offboardDate"),
+        "contractExpiryDate": doc.get("contractExpiryDate"),
         "tpbankInfo": tpbank_info,
         "bmkHrInfo": doc.get("bmkHrInfo") or {
             "contractCount": 0,
@@ -386,6 +388,162 @@ async def download_reconciliation_result_file(
 
 
 
+@router.get("/expiring-contracts/stats", response_model=ExpiringContractsStatsResponse)
+async def get_expiring_contracts_stats(
+    days: int = Query(30, ge=1, le=180, description="Số ngày tính movement data"),
+    db=Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Thống kê cho page Hợp đồng đến hạn:
+    - Pie chart: số lượng CTV nghỉ việc vs còn hiệu lực
+    - Bar chart: số lượng hợp đồng đến hạn theo từng ngày (movement data)
+    """
+    # 1. Pie chart stats
+    active_count = await db[COLLECTION].count_documents({
+        "employmentStatus": {"$in": ["Hiệu lực", "Hiện diện"]}
+    })
+    resigned_count = await db[COLLECTION].count_documents({
+        "employmentStatus": "Nghỉ việc"
+    })
+    total = active_count + resigned_count
+
+    # 2. Bar chart movement data trong N ngày tới
+    today = datetime.now(timezone.utc).date()
+    start_date_str = today.strftime("%Y-%m-%d")
+    end_date_str = (today + timedelta(days=days - 1)).strftime("%Y-%m-%d")
+
+    pipeline = [
+        {
+            "$match": {
+                "employmentStatus": {"$in": ["Hiệu lực", "Hiện diện"]},
+                "contractExpiryDate": {
+                    "$gte": start_date_str,
+                    "$lte": end_date_str
+                }
+            }
+        },
+        {
+            "$group": {
+                "_id": "$contractExpiryDate",
+                "count": {"$sum": 1}
+            }
+        }
+    ]
+
+    counts_by_date = {}
+    async for row in db[COLLECTION].aggregate(pipeline):
+        d_val = row["_id"]
+        if d_val:
+            counts_by_date[str(d_val)] = row["count"]
+
+    movement_items = []
+    total_expiring = 0
+    for i in range(days):
+        cur_date = today + timedelta(days=i)
+        cur_date_str = cur_date.strftime("%Y-%m-%d")
+        cnt = counts_by_date.get(cur_date_str, 0)
+        total_expiring += cnt
+        movement_items.append({
+            "date": cur_date_str,
+            "label": cur_date.strftime("%d/%m"),
+            "count": cnt,
+        })
+
+    return {
+        "pieChart": {
+            "active": active_count,
+            "resigned": resigned_count,
+            "total": total,
+        },
+        "barChart": {
+            "days": days,
+            "totalExpiring": total_expiring,
+            "items": movement_items,
+        }
+    }
+
+
+@router.get("/expiring-contracts", response_model=ReconciliationListResponse)
+async def list_expiring_contracts(
+    keyword: Optional[str] = Query(None, description="Tìm theo mã CTV, họ tên, số CCCD, đơn vị"),
+    days: Optional[int] = Query(None, ge=1, le=180, description="Lọc hợp đồng đến hạn trong N ngày tới"),
+    page: int = Query(1, ge=1, description="Số trang"),
+    page_size: int = Query(20, ge=1, le=200, description="Số dòng mỗi trang"),
+    db=Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Lấy danh sách các hợp đồng đến hạn từ collection bmk_ctv_reconciliations
+    với employee còn hiệu lực, sắp xếp theo contractExpiryDate tăng dần.
+    """
+    conditions = [
+        {"employmentStatus": {"$in": ["Hiệu lực", "Hiện diện"]}}
+    ]
+
+    if keyword and keyword.strip():
+        term = keyword.strip()
+        conditions.append({
+            "$or": [
+                {"employeeCode": {"$regex": re.escape(term), "$options": "i"}},
+                {"fullName": {"$regex": re.escape(term), "$options": "i"}},
+                {"idNumber": {"$regex": re.escape(term), "$options": "i"}},
+                {"departmentLevel1": {"$regex": re.escape(term), "$options": "i"}},
+            ]
+        })
+
+    if days is not None and days > 0:
+        today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        end_date_str = (datetime.now(timezone.utc) + timedelta(days=days - 1)).strftime("%Y-%m-%d")
+        conditions.append({
+            "contractExpiryDate": {
+                "$gte": today_str,
+                "$lte": end_date_str
+            }
+        })
+
+    query = {"$and": conditions} if conditions else {}
+
+    total = await db[COLLECTION].count_documents(query)
+    total_pages = max(1, math.ceil(total / page_size))
+    skip = (page - 1) * page_size
+
+    # Sắp xếp theo contractExpiryDate tăng dần:
+    # Các bản ghi có contractExpiryDate (hợp lệ) lên đầu, tiếp đến các bản ghi chưa có ngày đáo hạn
+    pipeline = [
+        {"$match": query},
+        {
+            "$addFields": {
+                "_hasExpiry": {
+                    "$cond": [
+                        {
+                            "$and": [
+                                {"$ne": ["$contractExpiryDate", None]},
+                                {"$ne": ["$contractExpiryDate", ""]}
+                            ]
+                        },
+                        0,
+                        1
+                    ]
+                }
+            }
+        },
+        {"$sort": {"_hasExpiry": 1, "contractExpiryDate": 1, "employeeCode": 1}},
+        {"$skip": skip},
+        {"$limit": page_size},
+    ]
+
+    items = []
+    async for doc in db[COLLECTION].aggregate(pipeline):
+        items.append(_to_response(doc))
+
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "pageSize": page_size,
+        "totalPages": total_pages,
+    }
+
+
 @router.get("/{employee_code}", response_model=ReconciliationRecordResponse)
 async def get_reconciliation_record(
     employee_code: str,
@@ -447,6 +605,7 @@ async def sync_bmk_system_info(
                         "employmentStatus": None,
                         "onboardDate": None,
                         "offboardDate": None,
+                        "contractExpiryDate": None,
                         "tpbankInfo": {"contracts": []},
                         "bmkHrInfo": {
                             "contractCount": 0,
@@ -650,6 +809,7 @@ async def import_hr_bmk_data(
                         "employmentStatus": None,
                         "onboardDate": None,
                         "offboardDate": None,
+                        "contractExpiryDate": None,
                         "tpbankInfo": {"contracts": []},
                         "bmkSystemInfo": {
                             "contractCount": 0,
@@ -856,6 +1016,7 @@ async def import_hr_tpbank_contracts(
                 "employmentStatus": None,
                 "onboardDate": None,
                 "offboardDate": None,
+                "contractExpiryDate": None,
                 "tpbankInfo": {
                     "estimatedContractCount": None,
                     "hrContractCount": contract_cnt,
@@ -1279,6 +1440,7 @@ async def reconcile_tpbank_data(
                             "position": None,
                             "bmkHrInfo": empty_info,
                             "bmkSystemInfo": empty_info,
+                            "contractExpiryDate": None,
                             "reconciliationStatus": "pending",
                             "createdAt": now,
                         },
