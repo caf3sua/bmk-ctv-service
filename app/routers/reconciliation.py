@@ -1,4 +1,5 @@
 import math
+import os
 import re
 from datetime import datetime, timezone, date, timedelta
 from io import BytesIO
@@ -6,7 +7,7 @@ from typing import List, Optional
 from urllib.parse import quote
 from bson import ObjectId
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from openpyxl import load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
@@ -28,10 +29,14 @@ from app.models.reconciliation import (
     ReconciliationResultFileInfo,
     ImportHrTpBankResult,
     ExpiringContractsStatsResponse,
+    ImportExpiringContractsResult,
     BmkSystemInfo,
     TpBankInfo,
     BmkHrInfo,
 )
+
+SERVICE_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+DAO_HAN_TEMPLATE_PATH = os.path.join(SERVICE_ROOT, "templates", "template_bmk_ngay_dao_han.xlsx")
 
 router = APIRouter(prefix="/api/reconciliation", tags=["Reconciliation"])
 logger = get_logger(__name__)
@@ -407,6 +412,13 @@ async def get_expiring_contracts_stats(
     })
     total = active_count + resigned_count
 
+    # Thống kê CTV còn hiệu lực có ngày đáo hạn vs thiếu ngày đáo hạn
+    active_with_expiry = await db[COLLECTION].count_documents({
+        "employmentStatus": {"$in": ["Hiệu lực", "Hiện diện"]},
+        "contractExpiryDate": {"$nin": [None, "", " ", "-"]}
+    })
+    active_without_expiry = max(0, active_count - active_with_expiry)
+
     # 2. Bar chart movement data trong N ngày tới
     today = datetime.now(timezone.utc).date()
     start_date_str = today.strftime("%Y-%m-%d")
@@ -454,6 +466,8 @@ async def get_expiring_contracts_stats(
             "active": active_count,
             "resigned": resigned_count,
             "total": total,
+            "activeWithExpiry": active_with_expiry,
+            "activeWithoutExpiry": active_without_expiry,
         },
         "barChart": {
             "days": days,
@@ -541,6 +555,239 @@ async def list_expiring_contracts(
         "page": page,
         "pageSize": page_size,
         "totalPages": total_pages,
+    }
+
+
+@router.get("/template-expiring-contracts")
+async def download_expiring_contracts_template(
+    current_user: dict = Depends(get_current_user),
+):
+    """Download template mẫu template_bmk_ngay_dao_han.xlsx để import ngày đáo hạn."""
+    if not os.path.exists(DAO_HAN_TEMPLATE_PATH):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Không tìm thấy file template mẫu template_bmk_ngay_dao_han.xlsx",
+        )
+    return FileResponse(
+        DAO_HAN_TEMPLATE_PATH,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        filename="template_bmk_ngay_dao_han.xlsx",
+    )
+
+
+@router.post("/import-expiring-contracts", response_model=ImportExpiringContractsResult)
+async def import_expiring_contracts_data(
+    file: UploadFile = File(...),
+    db=Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Import data ngày đáo hạn từ file Excel (template_bmk_ngay_dao_han.xlsx):
+    - Nếu CTV chưa tồn tại trong bmk_ctv_reconciliations: tạo mới với mã CTV, họ và tên, CCCD, ngày đáo hạn,
+      createdSource = "HTR BMK", các field khác để null hoặc không có giá trị.
+    - Nếu CTV đã tồn tại: chỉ cập nhật field ngày đáo hạn (contractExpiryDate).
+    """
+    if not file.filename or not file.filename.lower().endswith((".xlsx", ".xlsm")):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Chỉ hỗ trợ file Excel (.xlsx, .xlsm)",
+        )
+
+    content = await file.read()
+    try:
+        wb = load_workbook(BytesIO(content), data_only=True, read_only=True)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Không đọc được file Excel: {str(e)}",
+        )
+
+    ws = wb.active
+    rows = list(ws.iter_rows(values_only=True))
+    wb.close()
+
+    if len(rows) < 2:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File Excel không chứa dữ liệu",
+        )
+
+    header_row_idx = None
+    header = []
+    for idx, r in enumerate(rows):
+        if r and any(
+            cell and any(k in str(cell).upper() for k in ["MNV", "MÃ NV", "MÃ NHÂN VIÊN", "MÃ CTV", "EMPLOYEE CODE"])
+            for cell in r
+        ):
+            header_row_idx = idx
+            header = [str(c).strip() if c is not None else "" for c in r]
+            break
+
+    if header_row_idx is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Không tìm thấy dòng tiêu đề chứa cột 'MNV' (Mã nhân viên) trong file Excel",
+        )
+
+    header_upper = [h.upper() for h in header]
+
+    def find_col_idx(candidates: List[str]) -> Optional[int]:
+        for candidate in candidates:
+            cand_u = candidate.upper()
+            for idx, h in enumerate(header_upper):
+                if cand_u in h:
+                    return idx
+        return None
+
+    code_idx = find_col_idx(["MNV", "MÃ NV", "MÃ NHÂN VIÊN", "MÃ CTV", "EMPLOYEE CODE", "MA NV"])
+    name_idx = find_col_idx(["HỌ VÀ TÊN", "HỌ TÊN", "HO VA TEN", "FULL NAME", "NAME"])
+    cccd_idx = find_col_idx(["SỐ CCCD", "CCCD", "CMND", "SỐ CMND", "ID NUMBER", "SO CCCD"])
+    expiry_idx = find_col_idx(["NGÀY ĐÁO HẠN", "ĐÁO HẠN", "NGAY DAO HAN", "DAO HAN", "NGÀY HẾT HẠN", "HẾT HẠN", "NGÀY ĐẾN HẠN", "ĐẾN HẠN", "EXPIRY"])
+
+    if code_idx is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File thiếu cột 'MNV' (Mã nhân viên)",
+        )
+
+    if expiry_idx is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File thiếu cột 'Ngày đáo hạn'",
+        )
+
+    def parse_date_val(val) -> Optional[str]:
+        if val is None:
+            return None
+        if isinstance(val, (datetime, date)):
+            return val.strftime("%Y-%m-%d")
+        s = str(val).strip()
+        if not s or s == "-" or s.lower() == "none" or s.lower() == "null":
+            return None
+        if " " in s:
+            s = s.split(" ")[0].strip()
+        for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%Y/%m/%d", "%d-%m-%Y", "%m/%d/%Y"):
+            try:
+                return datetime.strptime(s, fmt).strftime("%Y-%m-%d")
+            except ValueError:
+                pass
+        return None
+
+    def parse_id_number(val) -> Optional[str]:
+        if val is None:
+            return None
+        s = str(val).strip()
+        if not s or s == "-":
+            return None
+        if s.endswith(".0"):
+            s = s[:-2]
+        return s
+
+    operations = []
+    now = _now()
+    created_count = 0
+    updated_count = 0
+    total_processed = 0
+
+    existing_codes = set()
+    async for doc in db[COLLECTION].find({}, {"employeeCode": 1}):
+        c = doc.get("employeeCode")
+        if c:
+            existing_codes.add(str(c).strip())
+
+    for row in rows[header_row_idx + 1 :]:
+        if not row or all(cell is None or str(cell).strip() == "" for cell in row):
+            continue
+
+        raw_code = row[code_idx] if code_idx < len(row) else None
+        if raw_code is None:
+            continue
+        employee_code = str(raw_code).strip()
+        if not employee_code:
+            continue
+
+        if employee_code.isdigit() and len(employee_code) < 5:
+            employee_code = employee_code.zfill(5)
+
+        full_name = str(row[name_idx]).strip() if (name_idx is not None and name_idx < len(row) and row[name_idx] is not None) else ""
+        raw_cccd = row[cccd_idx] if (cccd_idx is not None and cccd_idx < len(row)) else None
+        id_number = parse_id_number(raw_cccd)
+
+        raw_expiry = row[expiry_idx] if (expiry_idx is not None and expiry_idx < len(row)) else None
+        contract_expiry_date = parse_date_val(raw_expiry)
+
+        total_processed += 1
+
+        if employee_code in existing_codes:
+            # Nếu CTV đã tồn tại: CHỈ CẬP NHẬT field ngày đáo hạn
+            updated_count += 1
+            operations.append(
+                UpdateOne(
+                    {"employeeCode": employee_code},
+                    {
+                        "$set": {
+                            "contractExpiryDate": contract_expiry_date,
+                            "updatedAt": now,
+                        }
+                    }
+                )
+            )
+        else:
+            # Nếu CTV chưa tồn tại: tạo mới với các thông tin: mã CTV, họ và tên, CCCD, ngày đáo hạn, createdSource = "HTR BMK", các field khác để null hoặc không có giá trị
+            created_count += 1
+            existing_codes.add(employee_code)
+            new_doc = {
+                "_id": employee_code,
+                "employeeCode": employee_code,
+                "fullName": full_name or "",
+                "idNumber": id_number,
+                "contractExpiryDate": contract_expiry_date,
+                "createdSource": "HTR BMK",
+                "isBmkSystemExist": False,
+                "isSynced": False,
+                "departmentLevel1": None,
+                "position": None,
+                "employmentStatus": None,
+                "onboardDate": None,
+                "offboardDate": None,
+                "tpbankInfo": {"contracts": []},
+                "bmkHrInfo": {
+                    "contractCount": 0,
+                    "idCardCount": 0,
+                    "liquidationCount": 0,
+                    "taxCommitmentCount": 0,
+                },
+                "bmkSystemInfo": {
+                    "contractCount": 0,
+                    "idCardCount": 0,
+                    "liquidationCount": 0,
+                    "taxCommitmentCount": 0,
+                },
+                "result": None,
+                "reconciliationStatus": "pending",
+                "createdAt": now,
+                "updatedAt": now,
+            }
+            operations.append(
+                UpdateOne(
+                    {"employeeCode": employee_code},
+                    {"$setOnInsert": new_doc},
+                    upsert=True,
+                )
+            )
+
+        if len(operations) >= 500:
+            await db[COLLECTION].bulk_write(operations, ordered=False)
+            operations = []
+
+    if operations:
+        await db[COLLECTION].bulk_write(operations, ordered=False)
+
+    return {
+        "status": "success",
+        "message": f"Đã xử lý {total_processed} dòng: tạo mới {created_count} CTV, cập nhật ngày đáo hạn cho {updated_count} CTV.",
+        "totalProcessed": total_processed,
+        "createdCount": created_count,
+        "updatedCount": updated_count,
     }
 
 

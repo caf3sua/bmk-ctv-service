@@ -196,8 +196,18 @@ class ExpiringPieChartData(BaseModel):
     active: int
     resigned: int
     total: int
+    activeWithExpiry: int = 0
+    activeWithoutExpiry: int = 0
 
 class ExpiringContractsStatsResponse(BaseModel):
     pieChart: ExpiringPieChartData
     barChart: ExpiringBarChartData
+
+
+class ImportExpiringContractsResult(BaseModel):
+    status: str
+    message: str
+    totalProcessed: int
+    createdCount: int
+    updatedCount: int
 
