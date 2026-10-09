@@ -26,6 +26,7 @@ COLLECTION = "bmk_ctv_collaborators"
 
 SERVICE_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 TEMPLATE_PATH = os.path.join(SERVICE_ROOT, "templates", "collaborator_checklist_template.xlsx")
+CONTRACT_REPORT_TEMPLATE_PATH = os.path.join(SERVICE_ROOT, "templates", "mau_bao_cao_hop_dong_ctv.xlsx")
 
 # Template có 3 dòng tiêu đề (row 2-4, do merge cells) rồi mới tới dữ liệu (row 5 trở đi).
 HEADER_START_ROW = 2
@@ -80,6 +81,26 @@ def _parse_excel_date(value) -> str | None:
         except ValueError:
             continue
     raise ValueError(f"không nhận dạng được định dạng ngày '{text}'")
+
+def _format_date_vn(val) -> str:
+    if not val:
+        return ""
+    if isinstance(val, (datetime, date)):
+        return val.strftime("%d/%m/%Y")
+    val_str = str(val).strip()
+    if not val_str or val_str in ("-", "—", "None", "null"):
+        return ""
+    if len(val_str) == 10 and val_str[2] == "/" and val_str[5] == "/":
+        return val_str
+    if len(val_str) >= 10 and val_str[4] == "-" and val_str[7] == "-":
+        parts = val_str[:10].split("-")
+        return f"{parts[2]}/{parts[1]}/{parts[0]}"
+    for fmt in ["%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y", "%Y/%m/%d"]:
+        try:
+            return datetime.strptime(val_str[:10], fmt).strftime("%d/%m/%Y")
+        except ValueError:
+            continue
+    return val_str
 
 def _cell_str(row, idx) -> str:
     if idx is None or idx >= len(row):
@@ -356,6 +377,152 @@ async def export_collaborators_doisoat(db=Depends(get_db), current_user: dict = 
     )
 
     filename = f"bmk_ctv_doisoat_hoso_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+@router.get("/export-contracts")
+async def export_collaborators_contracts(db=Depends(get_db), current_user: dict = Depends(get_current_user)):
+    """Export contract report for all collaborators using template mau_bao_cao_hop_dong_ctv.xlsx."""
+    full_name = _actor_name(current_user)
+    if not os.path.exists(CONTRACT_REPORT_TEMPLATE_PATH):
+        await record_activity(
+            db, action="export_collaborators_contracts", result="fail", full_name=full_name,
+            username=current_user.get("username", ""),
+            message=f"{full_name} đã xuất thất bại báo cáo hợp đồng cộng tác viên (không tìm thấy file mẫu)",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Không tìm thấy file template mẫu báo cáo hợp đồng"
+        )
+
+    wb = load_workbook(CONTRACT_REPORT_TEMPLATE_PATH)
+    ws = wb["Báo cáo HĐ"] if "Báo cáo HĐ" in wb.sheetnames else wb.active
+
+    thin_border = Border(
+        left=Side(style='thin', color='D3D3D3'),
+        right=Side(style='thin', color='D3D3D3'),
+        top=Side(style='thin', color='D3D3D3'),
+        bottom=Side(style='thin', color='D3D3D3')
+    )
+    data_font = Font(name='Aptos Narrow', size=11)
+    center_align = Alignment(horizontal="center", vertical="center")
+    left_align = Alignment(horizontal="left", vertical="center")
+
+    cursor = db[COLLECTION].find({}).sort("_id", 1)
+    docs = await cursor.to_list(None)
+
+    # Lấy thông tin hợp đồng cho từng cộng tác viên và xác định số cột hợp đồng tối đa
+    parsed_collabs = []
+    max_contracts = 0
+    for doc in docs:
+        checklist = doc.get("checklist") or {}
+        hddv = checklist.get("hddv") or {}
+        raw_contracts = hddv.get("contract_date") or []
+        valid_contracts = []
+        for c in raw_contracts:
+            if isinstance(c, dict):
+                s = c.get("startDate")
+                e = c.get("endDate")
+            else:
+                s = getattr(c, "startDate", None)
+                e = getattr(c, "endDate", None)
+            if s or e:
+                valid_contracts.append({"startDate": s, "endDate": e})
+        valid_contracts.sort(key=lambda x: str(x.get("startDate") or x.get("endDate") or ""))
+        if len(valid_contracts) > max_contracts:
+            max_contracts = len(valid_contracts)
+        parsed_collabs.append({
+            "employee_code": doc.get("_id") or doc.get("employeeCode", ""),
+            "full_name": doc.get("fullName", ""),
+            "contracts": valid_contracts,
+        })
+
+    num_slots = max(5, max_contracts)
+
+    # Nếu có cộng tác viên có nhiều hơn 5 hợp đồng, mở rộng thêm các cột tiêu đề hợp đồng
+    if num_slots > 5:
+        header_fill = PatternFill(start_color="EF9263", end_color="EF9263", fill_type="solid")
+        header_font = Font(name="Times New Roman", size=12, bold=True, color="FFFFFF")
+        sub_font = Font(name="Times New Roman", size=11, bold=True, color="FFFFFF")
+        for k in range(6, num_slots + 1):
+            c_start = 5 + (k - 1) * 2
+            c_end = c_start + 1
+            ws.merge_cells(start_row=2, start_column=c_start, end_row=2, end_column=c_end)
+            h_cell1 = ws.cell(row=2, column=c_start, value=f"Hợp đồng {k}")
+            h_cell1.font = header_font
+            h_cell1.fill = header_fill
+            h_cell1.alignment = center_align
+            h_cell1.border = thin_border
+            h_cell2 = ws.cell(row=2, column=c_end)
+            h_cell2.fill = header_fill
+            h_cell2.border = thin_border
+
+            sub1 = ws.cell(row=3, column=c_start, value="Ngày bắt đầu")
+            sub1.font = sub_font
+            sub1.fill = header_fill
+            sub1.alignment = center_align
+            sub1.border = thin_border
+
+            sub2 = ws.cell(row=3, column=c_end, value="Ngày kết thúc")
+            sub2.font = sub_font
+            sub2.fill = header_fill
+            sub2.alignment = center_align
+            sub2.border = thin_border
+
+    row_idx = 4
+    stt = 1
+    max_col = 4 + num_slots * 2
+
+    for item in parsed_collabs:
+        c_list = item["contracts"]
+        contract_count = len(c_list)
+        row_values = [
+            stt,
+            item["employee_code"],
+            item["full_name"],
+            contract_count,
+        ]
+        for i in range(num_slots):
+            if i < contract_count:
+                row_values.append(_format_date_vn(c_list[i].get("startDate")))
+                row_values.append(_format_date_vn(c_list[i].get("endDate")))
+            else:
+                row_values.append(None)
+                row_values.append(None)
+
+        for col_idx, val in enumerate(row_values, start=1):
+            cell = ws.cell(row=row_idx, column=col_idx, value=val)
+            cell.font = data_font
+            cell.border = thin_border
+            cell.alignment = left_align if col_idx == 3 else center_align
+            if col_idx >= 5:
+                cell.number_format = '@'
+
+        row_idx += 1
+        stt += 1
+
+    # Dọn dẹp các dòng mẫu còn dư nếu có
+    for r in range(row_idx, ws.max_row + 1):
+        for c in range(1, max_col + 1):
+            cell = ws.cell(row=r, column=c)
+            cell.value = None
+            cell.border = Border()
+
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+
+    exported_count = stt - 1
+    await record_activity(
+        db, action="export_collaborators_contracts", result="success", full_name=full_name,
+        username=current_user.get("username", ""),
+        message=f"{full_name} đã xuất thành công báo cáo hợp đồng dịch vụ cho {exported_count} cộng tác viên",
+    )
+
+    filename = f"bmk_ctv_bao_cao_hop_dong_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
     return StreamingResponse(
         buffer,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
