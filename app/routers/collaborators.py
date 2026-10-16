@@ -434,9 +434,14 @@ async def export_collaborators_contracts(db=Depends(get_db), current_user: dict 
         valid_contracts.sort(key=lambda x: str(x.get("startDate") or x.get("endDate") or ""))
         if len(valid_contracts) > max_contracts:
             max_contracts = len(valid_contracts)
+
+        hddv_files = hddv.get("files") or []
+        scan_count = len(hddv_files) if isinstance(hddv_files, list) else 0
+
         parsed_collabs.append({
             "employee_code": doc.get("_id") or doc.get("employeeCode", ""),
             "full_name": doc.get("fullName", ""),
+            "scan_count": scan_count,
             "contracts": valid_contracts,
         })
 
@@ -448,7 +453,7 @@ async def export_collaborators_contracts(db=Depends(get_db), current_user: dict 
         header_font = Font(name="Times New Roman", size=12, bold=True, color="FFFFFF")
         sub_font = Font(name="Times New Roman", size=11, bold=True, color="FFFFFF")
         for k in range(6, num_slots + 1):
-            c_start = 5 + (k - 1) * 2
+            c_start = 6 + (k - 1) * 2
             c_end = c_start + 1
             ws.merge_cells(start_row=2, start_column=c_start, end_row=2, end_column=c_end)
             h_cell1 = ws.cell(row=2, column=c_start, value=f"Hợp đồng {k}")
@@ -474,7 +479,7 @@ async def export_collaborators_contracts(db=Depends(get_db), current_user: dict 
 
     row_idx = 4
     stt = 1
-    max_col = 4 + num_slots * 2
+    max_col = 5 + num_slots * 2
 
     for item in parsed_collabs:
         c_list = item["contracts"]
@@ -483,6 +488,7 @@ async def export_collaborators_contracts(db=Depends(get_db), current_user: dict 
             stt,
             item["employee_code"],
             item["full_name"],
+            item["scan_count"],
             contract_count,
         ]
         for i in range(num_slots):
@@ -498,7 +504,7 @@ async def export_collaborators_contracts(db=Depends(get_db), current_user: dict 
             cell.font = data_font
             cell.border = thin_border
             cell.alignment = left_align if col_idx == 3 else center_align
-            if col_idx >= 5:
+            if col_idx >= 6:
                 cell.number_format = '@'
 
         row_idx += 1
