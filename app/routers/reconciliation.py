@@ -31,6 +31,8 @@ from app.models.reconciliation import (
     ImportHrTpBankResult,
     ExpiringContractsStatsResponse,
     ImportExpiringContractsResult,
+    ExpiringContractsHistoryResponse,
+    ExpiringContractsHistoryListResponse,
     BmkSystemInfo,
     TpBankInfo,
     BmkHrInfo,
@@ -45,6 +47,7 @@ logger = get_logger(__name__)
 COLLECTION = "bmk_ctv_reconciliations"
 COLLABORATORS_COLLECTION = "bmk_ctv_collaborators"
 HISTORY_COLLECTION = "bmk_ctv_reconciliation_history"
+EXPIRING_HISTORY_COLLECTION = "bmk_ctv_expiring_contracts_history"
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -71,6 +74,7 @@ def _to_response(doc: dict) -> dict:
         "offboardDate": doc.get("offboardDate"),
         "contractOnboardDate": doc.get("contractOnboardDate"),
         "contractExpiryDate": doc.get("contractExpiryDate"),
+        "isCalculateExpired": doc.get("isCalculateExpired"),
         "tpbankInfo": tpbank_info,
         "bmkHrInfo": doc.get("bmkHrInfo") or {
             "contractCount": 0,
@@ -483,6 +487,7 @@ async def get_expiring_contracts_stats(
 async def list_expiring_contracts(
     keyword: Optional[str] = Query(None, description="Tìm theo mã CTV, họ tên, số CCCD, đơn vị"),
     days: Optional[int] = Query(None, ge=1, le=180, description="Lọc hợp đồng đến hạn trong N ngày tới"),
+    is_calculate_expired: Optional[bool] = Query(None, description="Lọc CTV có trong đợt upload tính ngày đáo hạn vừa rồi"),
     page: int = Query(1, ge=1, description="Số trang"),
     page_size: int = Query(20, ge=1, le=200, description="Số dòng mỗi trang"),
     db=Depends(get_db),
@@ -494,6 +499,11 @@ async def list_expiring_contracts(
     conditions = [
         {"employmentStatus": {"$in": ["Hiệu lực", "Hiện diện"]}}
     ]
+
+    if is_calculate_expired is True:
+        conditions.append({"isCalculateExpired": True})
+    elif is_calculate_expired is False:
+        conditions.append({"$or": [{"isCalculateExpired": None}, {"isCalculateExpired": False}]})
 
     if keyword and keyword.strip():
         term = keyword.strip()
@@ -704,11 +714,106 @@ async def import_expiring_contracts_data(
             s = s[:-2]
         return s
 
+    def get_notification_text(expiry_date_str: Optional[str]) -> str:
+        if not expiry_date_str or not expiry_date_str.strip():
+            return "Thiếu ngày đáo hạn"
+        try:
+            exp = datetime.strptime(expiry_date_str, "%Y-%m-%d").date()
+            today = datetime.now(timezone.utc).date()
+            diff_days = (exp - today).days
+            if diff_days < 0:
+                return f"Hợp đồng đã quá hạn {abs(diff_days)} ngày"
+            else:
+                return f"Hợp đồng sẽ đáo hạn trong {diff_days} ngày"
+        except Exception:
+            return "Thiếu ngày đáo hạn"
+
+    def generate_expiring_result_file(items: List[dict]) -> bytes:
+        wb_res = load_workbook(DAO_HAN_TEMPLATE_PATH)
+        ws_res = wb_res.active
+
+        # Cột G (index 7): Thông báo
+        cell_g3 = ws_res.cell(row=3, column=7, value="Thông báo")
+        cell_f3 = ws_res.cell(row=3, column=6)
+        if cell_f3.font:
+            cell_g3.font = cell_f3.font.copy()
+        if cell_f3.alignment:
+            cell_g3.alignment = cell_f3.alignment.copy()
+        if cell_f3.border:
+            cell_g3.border = cell_f3.border.copy()
+        if cell_f3.fill:
+            cell_g3.fill = cell_f3.fill.copy()
+
+        # Xóa các dòng mẫu cũ bên dưới header (từ dòng 4 trở đi)
+        if ws_res.max_row >= 4:
+            ws_res.delete_rows(4, ws_res.max_row - 3)
+
+        thin_border = Border(
+            left=Side(style="thin", color="D1D5DB"),
+            right=Side(style="thin", color="D1D5DB"),
+            top=Side(style="thin", color="D1D5DB"),
+            bottom=Side(style="thin", color="D1D5DB"),
+        )
+        align_center = Alignment(horizontal="center", vertical="center")
+        align_left = Alignment(horizontal="left", vertical="center")
+        data_font = Font(name="Tahoma", size=10)
+        overdue_font = Font(name="Tahoma", size=10, color="DC2626", bold=True)
+
+        for idx, it in enumerate(items, start=1):
+            r_num = 3 + idx
+            c_stt = ws_res.cell(row=r_num, column=1, value=idx)
+            c_code = ws_res.cell(row=r_num, column=2, value=it["employeeCode"])
+            c_name = ws_res.cell(row=r_num, column=3, value=it["fullName"])
+            c_cccd = ws_res.cell(row=r_num, column=4, value=it["idNumber"])
+            c_onboard = ws_res.cell(row=r_num, column=5, value=it["contractOnboardDate"])
+            c_exp = ws_res.cell(row=r_num, column=6, value=it["contractExpiryDate"])
+            c_notif = ws_res.cell(row=r_num, column=7, value=it["notificationText"])
+
+            c_stt.alignment = align_center
+            c_code.alignment = align_center
+            c_name.alignment = align_left
+            c_cccd.alignment = align_center
+            c_onboard.alignment = align_center
+            c_exp.alignment = align_center
+            c_notif.alignment = align_left
+
+            for c in (c_stt, c_code, c_name, c_cccd, c_onboard, c_exp):
+                c.font = data_font
+                c.border = thin_border
+
+            c_notif.border = thin_border
+            notif_str = str(it.get("notificationText") or "")
+            if "quá hạn" in notif_str.lower():
+                c_notif.font = overdue_font
+            else:
+                c_notif.font = data_font
+
+        ws_res.cell(row=2, column=3, value=len(items))
+        ws_res.column_dimensions["G"].width = 38
+
+        output = BytesIO()
+        wb_res.save(output)
+        wb_res.close()
+        return output.getvalue()
+
+    # Reset tất cả isCalculateExpired, contractOnboardDate và contractExpiryDate về None theo yêu cầu
+    await db[COLLECTION].update_many(
+        {},
+        {
+            "$set": {
+                "isCalculateExpired": None,
+                "contractOnboardDate": None,
+                "contractExpiryDate": None,
+            }
+        },
+    )
+
     operations = []
     now = _now()
     created_count = 0
     updated_count = 0
     total_processed = 0
+    processed_items = []
 
     existing_codes = set()
     async for doc in db[COLLECTION].find({}, {"employeeCode": 1}):
@@ -739,11 +844,20 @@ async def import_expiring_contracts_data(
         raw_onboard = row[onboard_idx] if (onboard_idx is not None and onboard_idx < len(row)) else None
         contract_onboard_date = parse_date_val(raw_onboard)
         contract_expiry_date = add_six_months(contract_onboard_date)
+        notification_text = get_notification_text(contract_expiry_date)
 
         total_processed += 1
+        processed_items.append({
+            "employeeCode": employee_code,
+            "fullName": full_name or "",
+            "idNumber": id_number or "",
+            "contractOnboardDate": contract_onboard_date or "",
+            "contractExpiryDate": contract_expiry_date or "",
+            "notificationText": notification_text,
+        })
 
         if employee_code in existing_codes:
-            # Nếu CTV đã tồn tại: cập nhật field ngày gia nhập và ngày đáo hạn (+6 tháng)
+            # Nếu CTV đã tồn tại: cập nhật field ngày gia nhập, ngày đáo hạn và isCalculateExpired = True (Requirement 3)
             updated_count += 1
             operations.append(
                 UpdateOne(
@@ -752,13 +866,14 @@ async def import_expiring_contracts_data(
                         "$set": {
                             "contractOnboardDate": contract_onboard_date,
                             "contractExpiryDate": contract_expiry_date,
+                            "isCalculateExpired": True,
                             "updatedAt": now,
                         }
                     }
                 )
             )
         else:
-            # Nếu CTV chưa tồn tại: tạo mới với các thông tin: mã CTV, họ và tên, CCCD, ngày gia nhập, ngày đáo hạn (+6 tháng), createdSource = "HTR BMK"
+            # Nếu CTV chưa tồn tại: tạo mới với isCalculateExpired = True (Requirement 3)
             created_count += 1
             existing_codes.add(employee_code)
             new_doc = {
@@ -768,12 +883,13 @@ async def import_expiring_contracts_data(
                 "idNumber": id_number,
                 "contractOnboardDate": contract_onboard_date,
                 "contractExpiryDate": contract_expiry_date,
+                "isCalculateExpired": True,
                 "createdSource": "HTR BMK",
                 "isBmkSystemExist": False,
                 "isSynced": False,
                 "departmentLevel1": None,
                 "position": None,
-                "employmentStatus": None,
+                "employmentStatus": "Hiệu lực",
                 "onboardDate": None,
                 "offboardDate": None,
                 "tpbankInfo": {"contracts": []},
@@ -809,6 +925,52 @@ async def import_expiring_contracts_data(
     if operations:
         await db[COLLECTION].bulk_write(operations, ordered=False)
 
+    # 1. Upload file gốc lên S3 (Requirement 4)
+    now_ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    clean_name = re.sub(r"[^\w\.-]", "_", file.filename)
+    s3_key = f"expiring_contracts/uploads/{now_ts}_{clean_name}"
+    s3_bucket = settings.S3_BUCKET
+    try:
+        upload_to_s3(content, s3_key)
+    except Exception as e:
+        logger.error(f"Không thể upload file gốc ngày đáo hạn lên S3: {str(e)}")
+
+    # 2. Tạo và upload file kết quả kèm cột Thông báo lên S3 (Requirement 4)
+    result_file_info = None
+    try:
+        result_content = generate_expiring_result_file(processed_items)
+        result_filename = f"ket_qua_ngay_dao_han_{clean_name}"
+        result_s3_key = f"expiring_contracts/results/{now_ts}_{clean_name}"
+        upload_to_s3(result_content, result_s3_key)
+        result_file_info = {
+            "filename": result_filename,
+            "s3Key": result_s3_key,
+            "s3Bucket": s3_bucket,
+            "fileSize": len(result_content),
+        }
+    except Exception as e:
+        logger.error(f"Không thể tạo hoặc upload file kết quả ngày đáo hạn lên S3: {str(e)}")
+
+    # 3. Lưu lịch sử vào collection bmk_ctv_expiring_contracts_history (Requirement 4)
+    uploaded_by = current_user.get("name") or current_user.get("fullName") or current_user.get("username", "Unknown")
+    username = current_user.get("username", "Unknown")
+    history_doc = {
+        "filename": file.filename,
+        "s3Key": s3_key,
+        "s3Bucket": s3_bucket,
+        "fileSize": len(content),
+        "uploadedBy": uploaded_by,
+        "username": username,
+        "totalRows": total_processed,
+        "createdCount": created_count,
+        "updatedCount": updated_count,
+        "status": "success",
+        "message": f"Đã xử lý {total_processed} dòng: tạo mới {created_count} CTV, cập nhật {updated_count} CTV",
+        "resultFile": result_file_info,
+        "createdAt": now,
+    }
+    await db[EXPIRING_HISTORY_COLLECTION].insert_one(history_doc)
+
     return {
         "status": "success",
         "message": f"Đã xử lý {total_processed} dòng: tạo mới {created_count} CTV, cập nhật ngày gia nhập và ngày đáo hạn cho {updated_count} CTV.",
@@ -816,6 +978,154 @@ async def import_expiring_contracts_data(
         "createdCount": created_count,
         "updatedCount": updated_count,
     }
+
+
+@router.get("/expiring-contracts/history", response_model=ExpiringContractsHistoryListResponse)
+async def list_expiring_contracts_history(
+    page: int = Query(1, ge=1, description="Số trang"),
+    page_size: int = Query(20, ge=1, le=100, description="Số dòng mỗi trang"),
+    db=Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Lấy danh sách lịch sử các phiên import ngày đáo hạn hợp đồng."""
+    total = await db[EXPIRING_HISTORY_COLLECTION].count_documents({})
+    total_pages = max(1, math.ceil(total / page_size))
+    skip = (page - 1) * page_size
+
+    cursor = db[EXPIRING_HISTORY_COLLECTION].find({}).sort("createdAt", -1).skip(skip).limit(page_size)
+    items = []
+    async for doc in cursor:
+        items.append({
+            "id": str(doc["_id"]),
+            "filename": doc.get("filename", ""),
+            "s3Key": doc.get("s3Key", ""),
+            "s3Bucket": doc.get("s3Bucket", settings.S3_BUCKET),
+            "fileSize": doc.get("fileSize", 0),
+            "uploadedBy": doc.get("uploadedBy", ""),
+            "username": doc.get("username", ""),
+            "totalRows": doc.get("totalRows", 0),
+            "createdCount": doc.get("createdCount", 0),
+            "updatedCount": doc.get("updatedCount", 0),
+            "status": doc.get("status", "success"),
+            "message": doc.get("message", ""),
+            "resultFile": doc.get("resultFile"),
+            "createdAt": doc.get("createdAt", _now()),
+        })
+
+    return {
+        "items": items,
+        "total": total,
+        "page": page,
+        "pageSize": page_size,
+        "totalPages": total_pages,
+    }
+
+
+@router.get("/expiring-contracts/history/{history_id}/download")
+async def download_expiring_contracts_history_file(
+    history_id: str,
+    db=Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Tải file import ngày đáo hạn gốc đã upload từ S3 MinIO."""
+    if not ObjectId.is_valid(history_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mã lịch sử không hợp lệ",
+        )
+
+    history = await db[EXPIRING_HISTORY_COLLECTION].find_one({"_id": ObjectId(history_id)})
+    if not history:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Không tìm thấy lịch sử import ngày đáo hạn",
+        )
+
+    s3_key = history.get("s3Key")
+    s3_bucket = history.get("s3Bucket", settings.S3_BUCKET)
+    filename = history.get("filename", "import_ngay_dao_han.xlsx")
+
+    if not s3_key:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Không có thông tin lưu trữ S3 cho file này",
+        )
+
+    try:
+        s3 = get_s3_client()
+        response = s3.get_object(Bucket=s3_bucket, Key=s3_key)
+
+        def iter_chunks():
+            for chunk in response["Body"].iter_chunks(chunk_size=1024 * 1024):
+                yield chunk
+
+        return StreamingResponse(
+            iter_chunks(),
+            media_type=response.get("ContentType", "application/octet-stream"),
+            headers={
+                "Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"
+            },
+        )
+    except Exception as e:
+        logger.error(f"Lỗi khi tải file từ S3 cho History ID={history_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Không thể tải file từ S3 MinIO",
+        )
+
+
+@router.get("/expiring-contracts/history/{history_id}/download-result")
+async def download_expiring_contracts_result_file(
+    history_id: str,
+    db=Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Tải file kết quả ngày đáo hạn kèm cột Thông báo từ S3 MinIO."""
+    if not ObjectId.is_valid(history_id):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mã lịch sử không hợp lệ",
+        )
+
+    history = await db[EXPIRING_HISTORY_COLLECTION].find_one({"_id": ObjectId(history_id)})
+    if not history:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Không tìm thấy lịch sử import ngày đáo hạn",
+        )
+
+    result_file = history.get("resultFile")
+    if not result_file or not isinstance(result_file, dict) or not result_file.get("s3Key"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Phiên này chưa có file kết quả",
+        )
+
+    s3_key = result_file.get("s3Key")
+    s3_bucket = result_file.get("s3Bucket", settings.S3_BUCKET)
+    filename = result_file.get("filename", "ket_qua_ngay_dao_han.xlsx")
+
+    try:
+        s3 = get_s3_client()
+        response = s3.get_object(Bucket=s3_bucket, Key=s3_key)
+
+        def iter_chunks():
+            for chunk in response["Body"].iter_chunks(chunk_size=1024 * 1024):
+                yield chunk
+
+        return StreamingResponse(
+            iter_chunks(),
+            media_type=response.get("ContentType", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+            headers={
+                "Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"
+            },
+        )
+    except Exception as e:
+        logger.error(f"Lỗi khi tải file kết quả từ S3 cho History ID={history_id}: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Không thể tải file kết quả từ S3 MinIO",
+        )
 
 
 @router.get("/{employee_code}", response_model=ReconciliationRecordResponse)

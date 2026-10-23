@@ -48,6 +48,7 @@ class ReconciliationRecordBase(BaseModel):
     offboardDate: Optional[str] = None
     contractOnboardDate: Optional[str] = None  # Ngày gia nhập (từ file import ngày đáo hạn)
     contractExpiryDate: Optional[str] = None  # Ngày hợp đồng đến hạn (+6 tháng từ ngày gia nhập)
+    isCalculateExpired: Optional[bool] = None  # Flag đánh dấu CTV có trong dữ liệu upload tính ngày đáo hạn
     tpbankInfo: TpBankInfo = Field(default_factory=TpBankInfo)
     bmkHrInfo: BmkHrInfo = Field(default_factory=BmkHrInfo)
     bmkSystemInfo: BmkSystemInfo = Field(default_factory=BmkSystemInfo)
@@ -70,6 +71,7 @@ class ReconciliationRecordUpdate(BaseModel):
     offboardDate: Optional[str] = None
     contractOnboardDate: Optional[str] = None
     contractExpiryDate: Optional[str] = None
+    isCalculateExpired: Optional[bool] = None
     tpbankInfo: Optional[TpBankInfo] = None
     bmkHrInfo: Optional[BmkHrInfo] = None
     bmkSystemInfo: Optional[BmkSystemInfo] = None
@@ -212,4 +214,30 @@ class ImportExpiringContractsResult(BaseModel):
     totalProcessed: int
     createdCount: int
     updatedCount: int
+
+
+class ExpiringContractsHistoryResponse(BaseModel):
+    id: str
+    filename: str
+    s3Key: str
+    s3Bucket: str
+    fileSize: Optional[int] = 0
+    uploadedBy: str
+    username: str
+    totalRows: int = 0
+    createdCount: int = 0
+    updatedCount: int = 0
+    status: str = "success"
+    message: str = ""
+    resultFile: Optional[ReconciliationResultFileInfo] = None
+    createdAt: str
+
+
+class ExpiringContractsHistoryListResponse(BaseModel):
+    items: List[ExpiringContractsHistoryResponse]
+    total: int
+    page: int
+    pageSize: int
+    totalPages: int
+
 
