@@ -1381,7 +1381,11 @@ def _calculate_reconciliation_result(
     else:
         idcard_res = "failed"
 
-    # Đối soát liquidation: nếu nhân viên đang hiệu lực (ngày nghỉ việc null) thì success, nhân viên nghỉ việc thì bmkSystemInfo.liquidationCount = 1 hoặc bmkHrInfo.liquidationCount = 1 thì success còn lại failed
+    # Đối soát liquidation:
+    # 1. Kết quả "Khớp" (success):
+    #    - Nếu Nhân viên Nghỉ việc: Bắt buộc phải có BBTL trên Hệ thống BMK (bmkSystemInfo.liquidationCount == 1) hoặc trong file HR BMK (bmkHrInfo.liquidationCount == 1)
+    #    - Nếu Nhân viên đang hiệu lực: Không có BBTL trên Hệ thống BMK (bmkSystemInfo.liquidationCount == 0) và trong file HR BMK (bmkHrInfo.liquidationCount == 0)
+    # 2. Kết quả "Lệch" (failed): Các trường hợp còn lại
     sys_liq = (bmk_system_info or {}).get("liquidationCount", 0) or 0
     hr_liq = (bmk_hr_info or {}).get("liquidationCount", 0) or 0
     if employment_status == "Nghỉ việc":
@@ -1390,7 +1394,10 @@ def _calculate_reconciliation_result(
         else:
             liq_res = "failed"
     else:
-        liq_res = "success"
+        if sys_liq == 0 and hr_liq == 0:
+            liq_res = "success"
+        else:
+            liq_res = "failed"
 
     sys_tax = (bmk_system_info or {}).get("taxCommitmentCount", 0) or 0
     hr_tax = (bmk_hr_info or {}).get("taxCommitmentCount", 0) or 0
