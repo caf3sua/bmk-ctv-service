@@ -46,7 +46,8 @@ class ReconciliationRecordBase(BaseModel):
     employmentStatus: Optional[str] = None
     onboardDate: Optional[str] = None
     offboardDate: Optional[str] = None
-    contractExpiryDate: Optional[str] = None  # Ngày hợp đồng đến hạn
+    contractOnboardDate: Optional[str] = None  # Ngày gia nhập (từ file import ngày đáo hạn)
+    contractExpiryDate: Optional[str] = None  # Ngày hợp đồng đến hạn (+6 tháng từ ngày gia nhập)
     tpbankInfo: TpBankInfo = Field(default_factory=TpBankInfo)
     bmkHrInfo: BmkHrInfo = Field(default_factory=BmkHrInfo)
     bmkSystemInfo: BmkSystemInfo = Field(default_factory=BmkSystemInfo)
@@ -67,6 +68,7 @@ class ReconciliationRecordUpdate(BaseModel):
     employmentStatus: Optional[str] = None
     onboardDate: Optional[str] = None
     offboardDate: Optional[str] = None
+    contractOnboardDate: Optional[str] = None
     contractExpiryDate: Optional[str] = None
     tpbankInfo: Optional[TpBankInfo] = None
     bmkHrInfo: Optional[BmkHrInfo] = None

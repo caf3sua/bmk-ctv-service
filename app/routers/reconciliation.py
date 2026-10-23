@@ -2,6 +2,7 @@ import math
 import os
 import re
 from datetime import datetime, timezone, date, timedelta
+from dateutil.relativedelta import relativedelta
 from io import BytesIO
 from typing import List, Optional
 from urllib.parse import quote
@@ -68,6 +69,7 @@ def _to_response(doc: dict) -> dict:
         "employmentStatus": doc.get("employmentStatus"),
         "onboardDate": doc.get("onboardDate"),
         "offboardDate": doc.get("offboardDate"),
+        "contractOnboardDate": doc.get("contractOnboardDate"),
         "contractExpiryDate": doc.get("contractExpiryDate"),
         "tpbankInfo": tpbank_info,
         "bmkHrInfo": doc.get("bmkHrInfo") or {
@@ -530,8 +532,8 @@ async def list_expiring_contracts(
                     "$cond": [
                         {
                             "$and": [
-                                {"$ne": ["$contractExpiryDate", None]},
-                                {"$ne": ["$contractExpiryDate", ""]}
+                                {"$eq": [{"$type": "$contractExpiryDate"}, "string"]},
+                                {"$gt": [{"$strLenCP": "$contractExpiryDate"}, 5]}
                             ]
                         },
                         0,
@@ -582,9 +584,11 @@ async def import_expiring_contracts_data(
     current_user: dict = Depends(get_current_user),
 ):
     """Import data ngày đáo hạn từ file Excel (template_bmk_ngay_dao_han.xlsx):
-    - Nếu CTV chưa tồn tại trong bmk_ctv_reconciliations: tạo mới với mã CTV, họ và tên, CCCD, ngày đáo hạn,
-      createdSource = "HTR BMK", các field khác để null hoặc không có giá trị.
-    - Nếu CTV đã tồn tại: chỉ cập nhật field ngày đáo hạn (contractExpiryDate).
+    - Cột E: Ngày gia nhập -> lưu vào contractOnboardDate
+    - Field contractExpiryDate = contractOnboardDate + 6 tháng (tính tự động, không dùng cột F)
+    - Nếu CTV chưa tồn tại trong bmk_ctv_reconciliations: tạo mới với mã CTV, họ và tên, CCCD,
+      ngày gia nhập (contractOnboardDate), ngày đáo hạn (contractExpiryDate), createdSource = "HTR BMK".
+    - Nếu CTV đã tồn tại: cập nhật field contractOnboardDate và contractExpiryDate.
     """
     if not file.filename or not file.filename.lower().endswith((".xlsx", ".xlsm")):
         raise HTTPException(
@@ -641,6 +645,10 @@ async def import_expiring_contracts_data(
     code_idx = find_col_idx(["MNV", "MÃ NV", "MÃ NHÂN VIÊN", "MÃ CTV", "EMPLOYEE CODE", "MA NV"])
     name_idx = find_col_idx(["HỌ VÀ TÊN", "HỌ TÊN", "HO VA TEN", "FULL NAME", "NAME"])
     cccd_idx = find_col_idx(["SỐ CCCD", "CCCD", "CMND", "SỐ CMND", "ID NUMBER", "SO CCCD"])
+    onboard_idx = find_col_idx([
+        "NGÀY GIA NHẬP", "GIA NHẬP", "NGAY GIA NHAP", "GIA NHAP",
+        "NGÀY VÀO", "NGAY VAO", "ONBOARD DATE", "ONBOARD", "JOIN DATE"
+    ])
     expiry_idx = find_col_idx(["NGÀY ĐÁO HẠN", "ĐÁO HẠN", "NGAY DAO HAN", "DAO HAN", "NGÀY HẾT HẠN", "HẾT HẠN", "NGÀY ĐẾN HẠN", "ĐẾN HẠN", "EXPIRY"])
 
     if code_idx is None:
@@ -649,11 +657,15 @@ async def import_expiring_contracts_data(
             detail="File thiếu cột 'MNV' (Mã nhân viên)",
         )
 
-    if expiry_idx is None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="File thiếu cột 'Ngày đáo hạn'",
-        )
+    if onboard_idx is None:
+        # Fallback sang cột E (index 4) nếu file có ít nhất 5 cột
+        if len(header) > 4:
+            onboard_idx = 4
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="File thiếu cột 'Ngày gia nhập' (Cột E)",
+            )
 
     def parse_date_val(val) -> Optional[str]:
         if val is None:
@@ -671,6 +683,16 @@ async def import_expiring_contracts_data(
             except ValueError:
                 pass
         return None
+
+    def add_six_months(date_str: Optional[str]) -> Optional[str]:
+        if not date_str:
+            return None
+        try:
+            dt = datetime.strptime(date_str, "%Y-%m-%d").date()
+            exp_dt = dt + relativedelta(months=6)
+            return exp_dt.strftime("%Y-%m-%d")
+        except Exception:
+            return None
 
     def parse_id_number(val) -> Optional[str]:
         if val is None:
@@ -712,19 +734,23 @@ async def import_expiring_contracts_data(
         raw_cccd = row[cccd_idx] if (cccd_idx is not None and cccd_idx < len(row)) else None
         id_number = parse_id_number(raw_cccd)
 
-        raw_expiry = row[expiry_idx] if (expiry_idx is not None and expiry_idx < len(row)) else None
-        contract_expiry_date = parse_date_val(raw_expiry)
+        # Lấy giá trị cột E (Ngày gia nhập) lưu vào contractOnboardDate
+        # Tính contractExpiryDate = contractOnboardDate + 6 tháng
+        raw_onboard = row[onboard_idx] if (onboard_idx is not None and onboard_idx < len(row)) else None
+        contract_onboard_date = parse_date_val(raw_onboard)
+        contract_expiry_date = add_six_months(contract_onboard_date)
 
         total_processed += 1
 
         if employee_code in existing_codes:
-            # Nếu CTV đã tồn tại: CHỈ CẬP NHẬT field ngày đáo hạn
+            # Nếu CTV đã tồn tại: cập nhật field ngày gia nhập và ngày đáo hạn (+6 tháng)
             updated_count += 1
             operations.append(
                 UpdateOne(
                     {"employeeCode": employee_code},
                     {
                         "$set": {
+                            "contractOnboardDate": contract_onboard_date,
                             "contractExpiryDate": contract_expiry_date,
                             "updatedAt": now,
                         }
@@ -732,7 +758,7 @@ async def import_expiring_contracts_data(
                 )
             )
         else:
-            # Nếu CTV chưa tồn tại: tạo mới với các thông tin: mã CTV, họ và tên, CCCD, ngày đáo hạn, createdSource = "HTR BMK", các field khác để null hoặc không có giá trị
+            # Nếu CTV chưa tồn tại: tạo mới với các thông tin: mã CTV, họ và tên, CCCD, ngày gia nhập, ngày đáo hạn (+6 tháng), createdSource = "HTR BMK"
             created_count += 1
             existing_codes.add(employee_code)
             new_doc = {
@@ -740,6 +766,7 @@ async def import_expiring_contracts_data(
                 "employeeCode": employee_code,
                 "fullName": full_name or "",
                 "idNumber": id_number,
+                "contractOnboardDate": contract_onboard_date,
                 "contractExpiryDate": contract_expiry_date,
                 "createdSource": "HTR BMK",
                 "isBmkSystemExist": False,
@@ -784,7 +811,7 @@ async def import_expiring_contracts_data(
 
     return {
         "status": "success",
-        "message": f"Đã xử lý {total_processed} dòng: tạo mới {created_count} CTV, cập nhật ngày đáo hạn cho {updated_count} CTV.",
+        "message": f"Đã xử lý {total_processed} dòng: tạo mới {created_count} CTV, cập nhật ngày gia nhập và ngày đáo hạn cho {updated_count} CTV.",
         "totalProcessed": total_processed,
         "createdCount": created_count,
         "updatedCount": updated_count,
@@ -852,6 +879,7 @@ async def sync_bmk_system_info(
                         "employmentStatus": None,
                         "onboardDate": None,
                         "offboardDate": None,
+                        "contractOnboardDate": None,
                         "contractExpiryDate": None,
                         "tpbankInfo": {"contracts": []},
                         "bmkHrInfo": {
@@ -1056,6 +1084,7 @@ async def import_hr_bmk_data(
                         "employmentStatus": None,
                         "onboardDate": None,
                         "offboardDate": None,
+                        "contractOnboardDate": None,
                         "contractExpiryDate": None,
                         "tpbankInfo": {"contracts": []},
                         "bmkSystemInfo": {
@@ -1263,6 +1292,7 @@ async def import_hr_tpbank_contracts(
                 "employmentStatus": None,
                 "onboardDate": None,
                 "offboardDate": None,
+                "contractOnboardDate": None,
                 "contractExpiryDate": None,
                 "tpbankInfo": {
                     "estimatedContractCount": None,
@@ -1694,6 +1724,7 @@ async def reconcile_tpbank_data(
                             "position": None,
                             "bmkHrInfo": empty_info,
                             "bmkSystemInfo": empty_info,
+                            "contractOnboardDate": None,
                             "contractExpiryDate": None,
                             "reconciliationStatus": "pending",
                             "createdAt": now,
