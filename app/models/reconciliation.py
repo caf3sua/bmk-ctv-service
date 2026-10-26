@@ -46,9 +46,7 @@ class ReconciliationRecordBase(BaseModel):
     employmentStatus: Optional[str] = None
     onboardDate: Optional[str] = None
     offboardDate: Optional[str] = None
-    contractOnboardDate: Optional[str] = None  # Ngày gia nhập (từ file import ngày đáo hạn)
-    contractExpiryDate: Optional[str] = None  # Ngày hợp đồng đến hạn (+6 tháng từ ngày gia nhập)
-    isCalculateExpired: Optional[bool] = None  # Flag đánh dấu CTV có trong dữ liệu upload tính ngày đáo hạn
+    calContractExpiryDate: Optional[str] = None  # Ngày hợp đồng đến hạn dự kiến (+6 tháng từ onboardDate)
     tpbankInfo: TpBankInfo = Field(default_factory=TpBankInfo)
     bmkHrInfo: BmkHrInfo = Field(default_factory=BmkHrInfo)
     bmkSystemInfo: BmkSystemInfo = Field(default_factory=BmkSystemInfo)
@@ -69,9 +67,7 @@ class ReconciliationRecordUpdate(BaseModel):
     employmentStatus: Optional[str] = None
     onboardDate: Optional[str] = None
     offboardDate: Optional[str] = None
-    contractOnboardDate: Optional[str] = None
-    contractExpiryDate: Optional[str] = None
-    isCalculateExpired: Optional[bool] = None
+    calContractExpiryDate: Optional[str] = None
     tpbankInfo: Optional[TpBankInfo] = None
     bmkHrInfo: Optional[BmkHrInfo] = None
     bmkSystemInfo: Optional[BmkSystemInfo] = None
@@ -96,7 +92,7 @@ class ReconciliationRecordResponse(ReconciliationRecordBase):
                 "employmentStatus": "Hiện diện",
                 "onboardDate": "2024-01-15",
                 "offboardDate": None,
-                "contractExpiryDate": "2024-12-31",
+                "calContractExpiryDate": "2024-07-15",
                 "tpbankInfo": {
                     "contracts": [
                         {
@@ -239,5 +235,17 @@ class ExpiringContractsHistoryListResponse(BaseModel):
     page: int
     pageSize: int
     totalPages: int
+
+
+class CalculateContractExpiryRequest(BaseModel):
+    month: str
+
+
+class CalculateContractExpiryResponse(BaseModel):
+    status: str
+    message: str
+    calculatedCount: int
+    totalActive: int
+    month: str
 
 

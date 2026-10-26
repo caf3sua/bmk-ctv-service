@@ -6,11 +6,11 @@ from pathlib import Path
 from typing import List, Optional
 
 from dateutil.relativedelta import relativedelta
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, UploadFile, File, status
 from fastapi.responses import FileResponse, StreamingResponse
 from openpyxl import load_workbook, Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from pymongo import UpdateOne
+from pymongo import InsertOne, UpdateOne
 
 from app.core.database import get_db
 from app.core.logging import get_logger
@@ -401,14 +401,29 @@ async def list_expense_collaborators(
 @router.post("/import", response_model=ExpenseImportResponse)
 async def import_expenses(
     file: UploadFile = File(...),
+    period: str = Form(..., description="Kỳ chi phí (YYYY-MM hoặc YYYYMM) do người dùng chọn"),
     db=Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
     """Import dữ liệu thanh toán phí CTV từ file Excel:
-    1. Kiểm tra tồn tại ở bmk_ctv_reconciliations: Nếu chưa có thì tạo mới 1 record cơ bản.
-    2. Upsert dữ liệu vào collection detail (bmk_ctv_expense_details) với unique key: employeeCode + paymentDate.
-    3. Cập nhật thông tin và số lần nhận thanh toán vào collection chính (bmk_ctv_collaborator_expenses).
+    1. Kiểm tra định dạng kỳ và file Excel.
+    2. Trước khi xử lý, xóa toàn bộ dữ liệu chi tiết của kỳ đã chọn trong bmk_ctv_expense_details.
+    3. Thêm mới bản ghi vào bmk_ctv_expense_details với period = kỳ người dùng đã chọn ở dialog.
+    4. Tạo mới record vào bmk_ctv_reconciliations nếu CTV chưa có trong danh sách đối soát.
+    5. Cập nhật thông tin và tính lại chính xác totalPaymentCount trong bmk_ctv_collaborator_expenses.
     """
+    if not period or not isinstance(period, str):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Vui lòng chọn kỳ chi phí (tháng/năm) cần import",
+        )
+    target_period = period.strip().replace("-", "")
+    if len(target_period) != 6 or not target_period.isdigit():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Kỳ chi phí không hợp lệ: '{period}'. Định dạng hợp lệ: YYYY-MM hoặc YYYYMM (ví dụ: 2026-10 hoặc 202610).",
+        )
+
     if not file.filename or not file.filename.lower().endswith((".xlsx", ".xlsm")):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -487,6 +502,16 @@ async def import_expenses(
     actor = _actor_name(current_user)
     now_iso = _now()
 
+    # 3. Trước khi xử lý, xóa hết dữ liệu của collection theo period = tháng user chọn (để thực hiện lại import từ đầu)
+    old_period_collab_codes = set(
+        await db[EXPENSE_DETAILS_COLLECTION].distinct("employeeCode", {"period": target_period})
+    )
+    delete_res = await db[EXPENSE_DETAILS_COLLECTION].delete_many({"period": target_period})
+    deleted_details_count = delete_res.deleted_count
+    logger.info(
+        f"Đã xóa {deleted_details_count} bản ghi cũ thuộc kỳ {target_period} trong {EXPENSE_DETAILS_COLLECTION} trước khi import."
+    )
+
     # 1. Thu thập mã CTV sẵn có trong bmk_ctv_reconciliations
     existing_reconcil_codes = set()
     async for doc in db[RECONCILIATION_COLLECTION].find({}, {"employeeCode": 1}):
@@ -525,7 +550,7 @@ async def import_expenses(
     detail_ops = []
 
     affected_collab_codes = set()
-    periods_affected = set()
+    periods_affected = {target_period}
     new_reconcil_created = 0
     total_valid_rows = 0
 
@@ -560,8 +585,8 @@ async def import_expenses(
             missing_date_net_total += net_income
             continue
 
-        period = calculate_period(payment_date)
-        periods_affected.add(period)
+        # 2. Thay vì tính period từ ngày BMK thanh toán, gán bằng giá trị target_period do user chọn ở dialog
+        period = target_period
         affected_collab_codes.add(employee_code)
         total_valid_rows += 1
 
@@ -612,8 +637,7 @@ async def import_expenses(
             existing_reconcil_codes.add(employee_code)
             new_reconcil_created += 1
 
-        # 2. Chuẩn bị upsert vào bmk_ctv_expense_details
-        # Phân biệt các khoản thanh toán trong cùng ngày của cùng CTV để không bị ghi đè
+        # 2. Chuẩn bị insert vào bmk_ctv_expense_details (đã được xóa sạch kỳ này từ trước)
         tx_seq_key = (employee_code, tax_code, payment_date)
         collab_tx_counter[tx_seq_key] = collab_tx_counter.get(tx_seq_key, 0) + 1
         tx_index = collab_tx_counter[tx_seq_key]
@@ -634,28 +658,13 @@ async def import_expenses(
             "workLocation": work_location,
             "paymentDate": payment_date,
             "paymentContent": payment_content,
-            "period": period,
+            "period": target_period,
+            "createdAt": now_iso,
+            "createdBy": actor,
             "updatedAt": now_iso,
             "updatedBy": actor,
         }
-        detail_ops.append(
-            UpdateOne(
-                {
-                    "employeeCode": employee_code,
-                    "paymentDate": payment_date,
-                    "taxCode": tax_code,
-                    "txIndex": tx_index,
-                },
-                {
-                    "$set": detail_doc,
-                    "$setOnInsert": {
-                        "createdAt": now_iso,
-                        "createdBy": actor,
-                    },
-                },
-                upsert=True,
-            )
-        )
+        detail_ops.append(InsertOne(detail_doc))
 
         # 3. Quản lý thông tin CTV ở collection chính (bmk_ctv_collaborator_expenses):
         # - Mỗi CTV chỉ có 1 onboardDate và 1 offboardDate lưu ở collection chính.
@@ -670,7 +679,7 @@ async def import_expenses(
                 "update_onboard": False,
                 "update_offboard": False,
                 "latestPaymentDate": payment_date,
-                "latestPeriod": period,
+                "latestPeriod": target_period,
             }
         else:
             collab_info = existing_collabs[employee_code]
@@ -681,7 +690,7 @@ async def import_expenses(
 
             if not collab_info.get("latestPaymentDate") or (payment_date and payment_date > collab_info["latestPaymentDate"]):
                 collab_info["latestPaymentDate"] = payment_date
-                collab_info["latestPeriod"] = period
+                collab_info["latestPeriod"] = target_period
 
             # Kiểm tra onboardDate (chỉ update từ NONE, nếu có giá trị khác thì cảnh báo)
             curr_onboard = collab_info.get("onboardDate")
@@ -723,8 +732,8 @@ async def import_expenses(
     updated_details = 0
     if detail_ops:
         res = await db[EXPENSE_DETAILS_COLLECTION].bulk_write(detail_ops, ordered=False)
-        imported_details = res.upserted_count
-        updated_details = res.modified_count
+        imported_details = res.inserted_count
+        updated_details = 0
 
     # Chuẩn bị bulk operations cho collection chính (bmk_ctv_collaborator_expenses)
     collab_ops = []
@@ -783,19 +792,50 @@ async def import_expenses(
     if collab_ops:
         await db[COLLABORATOR_EXPENSES_COLLECTION].bulk_write(collab_ops, ordered=False)
 
-    # 4. Tính toán và cập nhật lại chính xác totalPaymentCount cho tất cả CTV có liên quan
-    if affected_collab_codes:
+    # 4. Gộp tất cả mã CTV có liên quan (bao gồm CTV trong file mới và CTV có dữ liệu cũ thuộc kỳ vừa bị xóa)
+    all_affected_collab_codes = affected_collab_codes.union(old_period_collab_codes)
+
+    # Tính toán và cập nhật lại chính xác totalPaymentCount cho tất cả CTV có liên quan
+    if all_affected_collab_codes:
         pipeline_counts = [
-            {"$match": {"employeeCode": {"$in": list(affected_collab_codes)}}},
+            {"$match": {"employeeCode": {"$in": list(all_affected_collab_codes)}}},
             {"$group": {"_id": "$employeeCode", "count": {"$sum": 1}}},
         ]
-        counts_res = await db[EXPENSE_DETAILS_COLLECTION].aggregate(pipeline_counts).to_list(len(affected_collab_codes) + 10)
+        counts_res = await db[EXPENSE_DETAILS_COLLECTION].aggregate(pipeline_counts).to_list(len(all_affected_collab_codes) + 50)
+        found_counts = {item["_id"]: item["count"] for item in counts_res}
         count_ops = [
-            UpdateOne({"employeeCode": item["_id"]}, {"$set": {"totalPaymentCount": item["count"]}})
-            for item in counts_res
+            UpdateOne({"employeeCode": code}, {"$set": {"totalPaymentCount": found_counts.get(code, 0)}})
+            for code in all_affected_collab_codes
         ]
         if count_ops:
             await db[COLLABORATOR_EXPENSES_COLLECTION].bulk_write(count_ops, ordered=False)
+
+        # Cập nhật latestPaymentDate và latestPeriod chuẩn xác sau khi import / xóa
+        pipeline_latest = [
+            {"$match": {"employeeCode": {"$in": list(all_affected_collab_codes)}}},
+            {"$sort": {"paymentDate": -1, "period": -1}},
+            {
+                "$group": {
+                    "_id": "$employeeCode",
+                    "latestPaymentDate": {"$first": "$paymentDate"},
+                    "latestPeriod": {"$first": "$period"},
+                }
+            },
+        ]
+        latest_res = await db[EXPENSE_DETAILS_COLLECTION].aggregate(pipeline_latest).to_list(len(all_affected_collab_codes) + 50)
+        latest_map = {item["_id"]: item for item in latest_res}
+        latest_ops = [
+            UpdateOne(
+                {"employeeCode": code},
+                {"$set": {
+                    "latestPaymentDate": latest_map[code].get("latestPaymentDate") if code in latest_map else None,
+                    "latestPeriod": latest_map[code].get("latestPeriod") if code in latest_map else None,
+                }}
+            )
+            for code in all_affected_collab_codes
+        ]
+        if latest_ops:
+            await db[COLLABORATOR_EXPENSES_COLLECTION].bulk_write(latest_ops, ordered=False)
 
     # Gom các dòng thiếu ngày BMK TT thành 1 cảnh báo duy nhất
     if missing_date_rows:
@@ -803,17 +843,23 @@ async def import_expenses(
         warn_missing = (
             f"Phát hiện {len(missing_date_rows)} dòng thiếu 'NGÀY BMK TT' (Dòng {range_str}) "
             f"với tổng thực lĩnh {missing_date_net_total:,.0f} ₫. "
-            f"Các dòng này đã bị bỏ qua do không có ngày thanh toán để xác định kỳ đối soát."
+            f"Các dòng này đã bị bỏ qua do không có ngày thanh toán để xác định ngày chuyển tiền."
         )
         warnings_list.insert(0, warn_missing)
 
+    target_period_label = format_period_label(target_period)
     logger.info(
-        f"Import chi phí CTV hoàn tất bởi {actor}: {total_valid_rows} dòng xử lý, "
-        f"{imported_details} bản ghi mới, {updated_details} cập nhật, "
+        f"Import chi phí CTV kỳ {target_period_label} hoàn tất bởi {actor}: {total_valid_rows} dòng xử lý, "
+        f"{imported_details} bản ghi mới (xóa {deleted_details_count} bản ghi cũ), "
         f"{new_reconcil_created} CTV mới tạo vào bmk_ctv_reconciliations, {len(warnings_list)} cảnh báo."
     )
 
-    msg = f"Import thành công: {total_valid_rows} dòng xử lý ({imported_details} mới, {updated_details} cập nhật), thêm {new_reconcil_created} CTV vào đối soát."
+    msg = (
+        f"Import thành công kỳ {target_period_label}: {total_valid_rows} dòng xử lý "
+        f"({imported_details} mới"
+        + (f", xóa {deleted_details_count} bản ghi cũ" if deleted_details_count > 0 else "")
+        + f"), thêm {new_reconcil_created} CTV vào đối soát."
+    )
     if missing_date_rows:
         msg += f" Cảnh báo: Bỏ qua {len(missing_date_rows)} dòng thiếu 'NGÀY BMK TT' (Dòng {format_row_ranges(missing_date_rows)})."
     if warnings_list:

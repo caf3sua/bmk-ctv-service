@@ -36,10 +36,13 @@ from app.models.reconciliation import (
     BmkSystemInfo,
     TpBankInfo,
     BmkHrInfo,
+    CalculateContractExpiryRequest,
+    CalculateContractExpiryResponse,
 )
 
 SERVICE_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DAO_HAN_TEMPLATE_PATH = os.path.join(SERVICE_ROOT, "templates", "template_bmk_ngay_dao_han.xlsx")
+EXPORT_DAO_HAN_TEMPLATE_PATH = os.path.join(SERVICE_ROOT, "templates", "template_export_danhsach_ctv_dao_han.xlsx")
 
 router = APIRouter(prefix="/api/reconciliation", tags=["Reconciliation"])
 logger = get_logger(__name__)
@@ -72,9 +75,7 @@ def _to_response(doc: dict) -> dict:
         "employmentStatus": doc.get("employmentStatus"),
         "onboardDate": doc.get("onboardDate"),
         "offboardDate": doc.get("offboardDate"),
-        "contractOnboardDate": doc.get("contractOnboardDate"),
-        "contractExpiryDate": doc.get("contractExpiryDate"),
-        "isCalculateExpired": doc.get("isCalculateExpired"),
+        "calContractExpiryDate": doc.get("calContractExpiryDate"),
         "tpbankInfo": tpbank_info,
         "bmkHrInfo": doc.get("bmkHrInfo") or {
             "contractCount": 0,
@@ -92,6 +93,30 @@ def _to_response(doc: dict) -> dict:
         "createdAt": doc.get("createdAt", _now()),
         "updatedAt": doc.get("updatedAt", _now()),
     }
+
+
+def _parse_excel_date(val) -> tuple[Optional[str], Optional[datetime]]:
+    if val is None:
+        return None, None
+    if isinstance(val, (datetime, date)):
+        if val.year == 1900:
+            return None, None
+        dt = datetime(val.year, val.month, val.day) if isinstance(val, date) and not isinstance(val, datetime) else val
+        return dt.strftime("%Y-%m-%d"), dt
+    
+    s = str(val).strip()
+    if not s or s.upper() in ["N/A", "NONE", "-", "NULL"] or "1900" in s:
+        return None, None
+    
+    for fmt in ["%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y", "%Y/%m/%d"]:
+        try:
+            dt = datetime.strptime(s, fmt)
+            if dt.year == 1900:
+                return None, None
+            return dt.strftime("%Y-%m-%d"), dt
+        except ValueError:
+            pass
+    return None, None
 
 
 def _calculate_system_info(collab_doc: dict) -> dict:
@@ -421,7 +446,7 @@ async def get_expiring_contracts_stats(
     # Thống kê CTV còn hiệu lực có ngày đáo hạn vs thiếu ngày đáo hạn
     active_with_expiry = await db[COLLECTION].count_documents({
         "employmentStatus": {"$in": ["Hiệu lực", "Hiện diện"]},
-        "contractExpiryDate": {"$nin": [None, "", " ", "-"]}
+        "calContractExpiryDate": {"$nin": [None, "", " ", "-"]}
     })
     active_without_expiry = max(0, active_count - active_with_expiry)
 
@@ -434,7 +459,7 @@ async def get_expiring_contracts_stats(
         {
             "$match": {
                 "employmentStatus": {"$in": ["Hiệu lực", "Hiện diện"]},
-                "contractExpiryDate": {
+                "calContractExpiryDate": {
                     "$gte": start_date_str,
                     "$lte": end_date_str
                 }
@@ -442,7 +467,7 @@ async def get_expiring_contracts_stats(
         },
         {
             "$group": {
-                "_id": "$contractExpiryDate",
+                "_id": "$calContractExpiryDate",
                 "count": {"$sum": 1}
             }
         }
@@ -520,7 +545,7 @@ async def list_expiring_contracts(
         today_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
         end_date_str = (datetime.now(timezone.utc) + timedelta(days=days - 1)).strftime("%Y-%m-%d")
         conditions.append({
-            "contractExpiryDate": {
+            "calContractExpiryDate": {
                 "$gte": today_str,
                 "$lte": end_date_str
             }
@@ -532,8 +557,8 @@ async def list_expiring_contracts(
     total_pages = max(1, math.ceil(total / page_size))
     skip = (page - 1) * page_size
 
-    # Sắp xếp theo contractExpiryDate tăng dần:
-    # Các bản ghi có contractExpiryDate (hợp lệ) lên đầu, tiếp đến các bản ghi chưa có ngày đáo hạn
+    # Sắp xếp theo calContractExpiryDate tăng dần:
+    # Các bản ghi có calContractExpiryDate (hợp lệ) lên đầu, tiếp đến các bản ghi chưa có ngày đáo hạn
     pipeline = [
         {"$match": query},
         {
@@ -542,8 +567,8 @@ async def list_expiring_contracts(
                     "$cond": [
                         {
                             "$and": [
-                                {"$eq": [{"$type": "$contractExpiryDate"}, "string"]},
-                                {"$gt": [{"$strLenCP": "$contractExpiryDate"}, 5]}
+                                {"$eq": [{"$type": "$calContractExpiryDate"}, "string"]},
+                                {"$gt": [{"$strLenCP": "$calContractExpiryDate"}, 5]}
                             ]
                         },
                         0,
@@ -552,7 +577,7 @@ async def list_expiring_contracts(
                 }
             }
         },
-        {"$sort": {"_hasExpiry": 1, "contractExpiryDate": 1, "employeeCode": 1}},
+        {"$sort": {"_hasExpiry": 1, "calContractExpiryDate": 1, "employeeCode": 1}},
         {"$skip": skip},
         {"$limit": page_size},
     ]
@@ -568,6 +593,383 @@ async def list_expiring_contracts(
         "pageSize": page_size,
         "totalPages": total_pages,
     }
+
+
+def _get_notification_text(expiry_date_str: Optional[str]) -> str:
+    if not expiry_date_str or not str(expiry_date_str).strip():
+        return "Thiếu ngày đáo hạn"
+    try:
+        exp = datetime.strptime(str(expiry_date_str)[:10], "%Y-%m-%d").date()
+        today = datetime.now(timezone.utc).date()
+        diff_days = (exp - today).days
+        if diff_days < 0:
+            return f"Hợp đồng đã quá hạn {abs(diff_days)} ngày"
+        else:
+            return f"Hợp đồng sẽ đáo hạn trong {diff_days} ngày"
+    except Exception:
+        return "Thiếu ngày đáo hạn"
+
+
+def _to_excel_date(d_val):
+    if not d_val:
+        return ""
+    if isinstance(d_val, (datetime, date)):
+        return d_val if isinstance(d_val, date) else d_val.date()
+    s = str(d_val).strip()[:10]
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"):
+        try:
+            return datetime.strptime(s, fmt).date()
+        except ValueError:
+            pass
+    return s
+
+
+def _generate_expiring_excel_file(items: List[dict], title_month: Optional[str] = None) -> bytes:
+    wb_res = load_workbook(DAO_HAN_TEMPLATE_PATH)
+    ws_res = wb_res.active
+
+    if title_month:
+        orig_title = ws_res.cell(row=1, column=2).value or "DANH SÁCH CẬP NHẬT NGÀY ĐÁO HẠN HỢP ĐỒNG"
+        ws_res.cell(row=1, column=2, value=f"{orig_title} - THÁNG {title_month}")
+
+    # Cột F (index 6): Ngày đáo hạn dự kiến
+    ws_res.cell(row=3, column=6, value="Ngày đáo hạn dự kiến")
+
+    # Cột G (index 7): Thông báo
+    cell_g3 = ws_res.cell(row=3, column=7, value="Thông báo")
+    cell_f3 = ws_res.cell(row=3, column=6)
+    if cell_f3.font:
+        cell_g3.font = cell_f3.font.copy()
+    if cell_f3.alignment:
+        cell_g3.alignment = cell_f3.alignment.copy()
+    if cell_f3.border:
+        cell_g3.border = cell_f3.border.copy()
+    if cell_f3.fill:
+        cell_g3.fill = cell_f3.fill.copy()
+
+    # Xóa các dòng mẫu cũ bên dưới header (từ dòng 4 trở đi)
+    if ws_res.max_row >= 4:
+        ws_res.delete_rows(4, ws_res.max_row - 3)
+
+    thin_border = Border(
+        left=Side(style="thin", color="D1D5DB"),
+        right=Side(style="thin", color="D1D5DB"),
+        top=Side(style="thin", color="D1D5DB"),
+        bottom=Side(style="thin", color="D1D5DB"),
+    )
+    align_center = Alignment(horizontal="center", vertical="center")
+    align_left = Alignment(horizontal="left", vertical="center")
+    data_font = Font(name="Tahoma", size=10)
+    overdue_font = Font(name="Tahoma", size=10, color="DC2626", bold=True)
+
+    for idx, it in enumerate(items, start=1):
+        r_num = 3 + idx
+        c_stt = ws_res.cell(row=r_num, column=1, value=idx)
+        c_code = ws_res.cell(row=r_num, column=2, value=it.get("employeeCode"))
+        c_name = ws_res.cell(row=r_num, column=3, value=it.get("fullName"))
+        c_cccd = ws_res.cell(row=r_num, column=4, value=it.get("idNumber"))
+
+        onboard_val = _to_excel_date(it.get("onboardDate"))
+        c_onboard = ws_res.cell(row=r_num, column=5, value=onboard_val)
+        if isinstance(onboard_val, (date, datetime)):
+            c_onboard.number_format = "dd/mm/yyyy"
+
+        exp_val = _to_excel_date(it.get("calContractExpiryDate"))
+        c_exp = ws_res.cell(row=r_num, column=6, value=exp_val)
+        if isinstance(exp_val, (date, datetime)):
+            c_exp.number_format = "dd/mm/yyyy"
+
+        notif_str = it.get("notificationText") or _get_notification_text(it.get("calContractExpiryDate"))
+        c_notif = ws_res.cell(row=r_num, column=7, value=notif_str)
+
+        c_stt.alignment = align_center
+        c_code.alignment = align_center
+        c_name.alignment = align_left
+        c_cccd.alignment = align_center
+        c_onboard.alignment = align_center
+        c_exp.alignment = align_center
+        c_notif.alignment = align_left
+
+        for c in (c_stt, c_code, c_name, c_cccd, c_onboard, c_exp):
+            c.font = data_font
+            c.border = thin_border
+
+        c_notif.border = thin_border
+        if "quá hạn" in str(notif_str).lower():
+            c_notif.font = overdue_font
+        else:
+            c_notif.font = data_font
+
+    ws_res.cell(row=2, column=3, value=len(items))
+    ws_res.column_dimensions["G"].width = 38
+
+    output = BytesIO()
+    wb_res.save(output)
+    wb_res.close()
+    return output.getvalue()
+
+
+def _generate_expiring_export_file(items: List[dict], target_year: int, target_month: int) -> bytes:
+    if not os.path.exists(EXPORT_DAO_HAN_TEMPLATE_PATH):
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Không tìm thấy file template mẫu template_export_danhsach_ctv_dao_han.xlsx",
+        )
+
+    wb = load_workbook(EXPORT_DAO_HAN_TEMPLATE_PATH)
+    ws = wb.active
+
+    # Cập nhật tên sheet theo tháng (ví dụ '10 2026')
+    sheet_title = f"{target_month:02d} {target_year}"
+    ws.title = sheet_title
+
+    # Cập nhật tiêu đề ở dòng 4
+    ws.cell(row=4, column=1, value=f"DANH SÁCH CỘNG TÁC VIÊN ĐÁO HẠN THÁNG {target_month:02d}/{target_year}")
+
+    # Xóa các dòng mẫu cũ từ dòng 7 trở đi nếu có
+    if ws.max_row >= 7:
+        ws.delete_rows(7, ws.max_row - 6)
+
+    thin_side = Side(style="thin", color="000000")
+    thin_border = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thin_side)
+    align_center = Alignment(horizontal="center", vertical="center")
+    align_left = Alignment(horizontal="left", vertical="center")
+    align_right = Alignment(horizontal="right", vertical="center")
+    font_data = Font(name="Times New Roman", size=11)
+
+    for idx, it in enumerate(items, start=1):
+        r_num = 6 + idx
+
+        # 1. STT (Col A)
+        c_stt = ws.cell(row=r_num, column=1, value=idx)
+        c_stt.alignment = align_center
+
+        # 2. Ngày BMK thanh toán (Col B)
+        pay_date_val = _to_excel_date(it.get("paymentDate"))
+        c_pay = ws.cell(row=r_num, column=2, value=pay_date_val if pay_date_val else None)
+        c_pay.alignment = align_center
+        if isinstance(pay_date_val, (date, datetime)):
+            c_pay.number_format = "dd/mm/yyyy"
+
+        # 3. MNV (Col C)
+        code_val = it.get("employeeCode", "")
+        c_code = ws.cell(row=r_num, column=3, value=str(code_val).strip() if code_val else "")
+        c_code.alignment = align_center
+        c_code.number_format = "@"
+
+        # 4. HỌ VÀ TÊN (Col D)
+        c_name = ws.cell(row=r_num, column=4, value=it.get("fullName", ""))
+        c_name.alignment = align_left
+
+        # 5. MÃ SỐ THUẾ (Col E)
+        tax_val = it.get("taxCode") or it.get("idNumber") or ""
+        c_tax = ws.cell(row=r_num, column=5, value=str(tax_val).strip() if tax_val else "")
+        c_tax.alignment = align_center
+        c_tax.number_format = "@"
+
+        # 6. THU NHẬP CHỊU THUẾ (Col F)
+        c_income = ws.cell(row=r_num, column=6, value=None)
+        c_income.alignment = align_right
+        c_income.number_format = '_(* #,##0_);_(* (#,##0);_(* "-"??_);_(@_)'
+
+        # 7. THUẾ TNCN (Col G)
+        c_tax_amount = ws.cell(row=r_num, column=7, value=None)
+        c_tax_amount.alignment = align_right
+        c_tax_amount.number_format = '_(* #,##0_);_(* (#,##0);_(* "-"??_);_(@_)'
+
+        # 8. THỰC LĨNH (Col H)
+        c_net = ws.cell(row=r_num, column=8, value=None)
+        c_net.alignment = align_right
+        c_net.number_format = '_(* #,##0_);_(* (#,##0);_(* "-"??_);_(@_)'
+
+        # 9. NGÀY GIA NHẬP (Col I)
+        onboard_val = _to_excel_date(it.get("onboardDate"))
+        c_onboard = ws.cell(row=r_num, column=9, value=onboard_val if onboard_val else None)
+        c_onboard.alignment = align_center
+        if isinstance(onboard_val, (date, datetime)):
+            c_onboard.number_format = "dd/mm/yyyy"
+
+        # 10. NGÀY THÔI VIỆC (Col J)
+        offboard_val = _to_excel_date(it.get("offboardDate"))
+        c_offboard = ws.cell(row=r_num, column=10, value=offboard_val if offboard_val else None)
+        c_offboard.alignment = align_center
+        if isinstance(offboard_val, (date, datetime)):
+            c_offboard.number_format = "dd/mm/yyyy"
+
+        for col_idx in range(1, 11):
+            cell = ws.cell(row=r_num, column=col_idx)
+            cell.font = font_data
+            cell.border = thin_border
+
+    output = BytesIO()
+    wb.save(output)
+    wb.close()
+    return output.getvalue()
+
+
+@router.post("/calculate-contract-expiry", response_model=CalculateContractExpiryResponse)
+async def calculate_contract_expiry(
+    payload: CalculateContractExpiryRequest,
+    db=Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Tính ngày đáo hạn dự kiến cho các CTV còn hiệu lực theo tháng được chọn:
+    - Với mỗi cộng tác viên còn hiệu lực, từ ngày gia nhập tính ngày đáo hạn dự kiến (cộng thêm 6 tháng):
+      + Nếu ngày đáo hạn dự kiến có tháng nhỏ hơn Selected month thì tiếp tục cộng thêm chu kỳ 6 tháng.
+      + Nếu ngày đáo hạn dự kiến có tháng >= selected month thì dừng lại.
+    - Cập nhật calContractExpiryDate vào collection bmk_ctv_reconciliations.
+    """
+    month_str = payload.month.strip()
+    try:
+        parts = month_str.split("-")
+        target_year = int(parts[0])
+        target_month = int(parts[1])
+        if not (1 <= target_month <= 12):
+            raise ValueError()
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Định dạng tháng không hợp lệ (cần 'YYYY-MM', ví dụ '2026-10'): {month_str}",
+        )
+
+    # Lấy danh sách CTV còn hiệu lực
+    active_cursor = db[COLLECTION].find(
+        {"employmentStatus": {"$in": ["Hiệu lực", "Hiện diện"]}},
+        {"_id": 1, "onboardDate": 1}
+    )
+
+    operations = []
+    now = _now()
+    calculated_count = 0
+    total_active = 0
+
+    async for doc in active_cursor:
+        total_active += 1
+        raw_onboard = doc.get("onboardDate")
+        onboard_str, onboard_dt = _parse_excel_date(raw_onboard)
+
+        if not onboard_dt:
+            continue
+
+        # Quy tắc đối soát: Nếu ngày gia nhập trước ngày 1/4/2025 thì Ngày gia nhập = 1/4/2025
+        if onboard_dt < datetime(2025, 4, 1):
+            onboard_dt = datetime(2025, 4, 1)
+
+        # Tính chu kỳ 6 tháng:
+        # + Nếu ngày đáo hạn dự kiến có tháng nhỏ hơn Selected month thì tiếp tục cộng thêm chu kỳ 6 tháng.
+        # + Nếu ngày đáo hạn dự kiến có tháng >= selected month thì dừng lại
+        expiry_dt = onboard_dt + relativedelta(months=6)
+        while (expiry_dt.year < target_year) or (expiry_dt.year == target_year and expiry_dt.month < target_month):
+            expiry_dt = expiry_dt + relativedelta(months=6)
+
+        cal_expiry_str = expiry_dt.strftime("%Y-%m-%d")
+        calculated_count += 1
+
+        operations.append(
+            UpdateOne(
+                {"_id": doc["_id"]},
+                {
+                    "$set": {
+                        "calContractExpiryDate": cal_expiry_str,
+                        "updatedAt": now,
+                    }
+                }
+            )
+        )
+
+        if len(operations) >= 500:
+            await db[COLLECTION].bulk_write(operations, ordered=False)
+            operations = []
+
+    if operations:
+        await db[COLLECTION].bulk_write(operations, ordered=False)
+
+    return CalculateContractExpiryResponse(
+        status="success",
+        message=f"Đã tính ngày đáo hạn dự kiến cho {calculated_count} CTV còn hiệu lực theo tháng {target_month:02d}/{target_year}.",
+        calculatedCount=calculated_count,
+        totalActive=total_active,
+        month=f"{target_year}-{target_month:02d}",
+    )
+
+
+@router.get("/export-expiring-contracts")
+async def export_expiring_contracts(
+    month: str = Query(..., description="Tháng cần xuất dữ liệu theo định dạng YYYY-MM (ví dụ 2026-10)"),
+    db=Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Xuất danh sách nhân viên còn hiệu lực có tháng của ngày đáo hạn dự kiến = selected month theo template_export_danhsach_ctv_dao_han.xlsx."""
+    month_str = month.strip()
+    try:
+        parts = month_str.split("-")
+        target_year = int(parts[0])
+        target_month = int(parts[1])
+        if not (1 <= target_month <= 12):
+            raise ValueError()
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Định dạng tháng không hợp lệ (cần 'YYYY-MM', ví dụ '2026-10'): {month_str}",
+        )
+
+    month_prefix = f"{target_year}-{target_month:02d}"
+
+    # Lấy tất cả data của nhân viên còn hiệu lực và tháng của ngày đáo hạn dự kiến = selected month
+    cursor = db[COLLECTION].find({
+        "employmentStatus": {"$in": ["Hiệu lực", "Hiện diện"]},
+        "calContractExpiryDate": {"$regex": f"^{month_prefix}"}
+    }).sort([("calContractExpiryDate", 1), ("employeeCode", 1)])
+
+    docs = []
+    emp_codes = []
+    async for doc in cursor:
+        docs.append(doc)
+        code = doc.get("employeeCode")
+        if code:
+            emp_codes.append(str(code).strip())
+
+    # Map taxCode từ collaborators nếu có
+    tax_code_map = {}
+    if emp_codes:
+        collab_cursor = db[COLLABORATORS_COLLECTION].find(
+            {"employeeCode": {"$in": emp_codes}},
+            {"employeeCode": 1, "taxCode": 1, "idNumber": 1}
+        )
+        async for c_doc in collab_cursor:
+            c_code = c_doc.get("employeeCode")
+            if c_code:
+                tax_code_map[str(c_code).strip()] = c_doc.get("taxCode") or c_doc.get("idNumber")
+
+    items = []
+    for doc in docs:
+        emp_code = str(doc.get("employeeCode", "")).strip()
+        tax_code = tax_code_map.get(emp_code) or doc.get("taxCode") or doc.get("idNumber") or doc.get("cccd") or ""
+        items.append({
+            "employeeCode": emp_code,
+            "fullName": doc.get("fullName", ""),
+            "taxCode": tax_code,
+            "idNumber": doc.get("idNumber") or doc.get("cccd") or "",
+            "onboardDate": doc.get("onboardDate") or "",
+            "offboardDate": doc.get("offboardDate") or None,
+            "paymentDate": doc.get("paymentDate") or None,
+            "calContractExpiryDate": doc.get("calContractExpiryDate") or "",
+            "notificationText": _get_notification_text(doc.get("calContractExpiryDate")),
+        })
+
+    file_bytes = _generate_expiring_export_file(items, target_year=target_year, target_month=target_month)
+
+    filename = f"danh_sach_ctv_dao_han_thang_{target_month:02d}_{target_year}.xlsx"
+    encoded_filename = quote(filename)
+    headers = {
+        "Content-Disposition": f"attachment; filename=\"{filename}\"; filename*=UTF-8''{encoded_filename}",
+        "Access-Control-Expose-Headers": "Content-Disposition",
+    }
+    return StreamingResponse(
+        BytesIO(file_bytes),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers=headers,
+    )
 
 
 @router.get("/template-expiring-contracts")
@@ -593,12 +995,9 @@ async def import_expiring_contracts_data(
     db=Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
-    """Import data ngày đáo hạn từ file Excel (template_bmk_ngay_dao_han.xlsx):
-    - Cột E: Ngày gia nhập -> lưu vào contractOnboardDate
-    - Field contractExpiryDate = contractOnboardDate + 6 tháng (tính tự động, không dùng cột F)
-    - Nếu CTV chưa tồn tại trong bmk_ctv_reconciliations: tạo mới với mã CTV, họ và tên, CCCD,
-      ngày gia nhập (contractOnboardDate), ngày đáo hạn (contractExpiryDate), createdSource = "HTR BMK".
-    - Nếu CTV đã tồn tại: cập nhật field contractOnboardDate và contractExpiryDate.
+    """Import data ngày gia nhập từ file Excel:
+    - Đọc dữ liệu cột E (Ngày gia nhập) lưu vào onboardDate ở collection bmk_ctv_reconciliations theo quy tắc file đối soát.
+    - Giá trị field calContractExpiryDate không tính khi import (sẽ tính ở logic riêng).
     """
     if not file.filename or not file.filename.lower().endswith((".xlsx", ".xlsm")):
         raise HTTPException(
@@ -677,33 +1076,6 @@ async def import_expiring_contracts_data(
                 detail="File thiếu cột 'Ngày gia nhập' (Cột E)",
             )
 
-    def parse_date_val(val) -> Optional[str]:
-        if val is None:
-            return None
-        if isinstance(val, (datetime, date)):
-            return val.strftime("%Y-%m-%d")
-        s = str(val).strip()
-        if not s or s == "-" or s.lower() == "none" or s.lower() == "null":
-            return None
-        if " " in s:
-            s = s.split(" ")[0].strip()
-        for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%Y/%m/%d", "%d-%m-%Y", "%m/%d/%Y"):
-            try:
-                return datetime.strptime(s, fmt).strftime("%Y-%m-%d")
-            except ValueError:
-                pass
-        return None
-
-    def add_six_months(date_str: Optional[str]) -> Optional[str]:
-        if not date_str:
-            return None
-        try:
-            dt = datetime.strptime(date_str, "%Y-%m-%d").date()
-            exp_dt = dt + relativedelta(months=6)
-            return exp_dt.strftime("%Y-%m-%d")
-        except Exception:
-            return None
-
     def parse_id_number(val) -> Optional[str]:
         if val is None:
             return None
@@ -714,99 +1086,7 @@ async def import_expiring_contracts_data(
             s = s[:-2]
         return s
 
-    def get_notification_text(expiry_date_str: Optional[str]) -> str:
-        if not expiry_date_str or not expiry_date_str.strip():
-            return "Thiếu ngày đáo hạn"
-        try:
-            exp = datetime.strptime(expiry_date_str, "%Y-%m-%d").date()
-            today = datetime.now(timezone.utc).date()
-            diff_days = (exp - today).days
-            if diff_days < 0:
-                return f"Hợp đồng đã quá hạn {abs(diff_days)} ngày"
-            else:
-                return f"Hợp đồng sẽ đáo hạn trong {diff_days} ngày"
-        except Exception:
-            return "Thiếu ngày đáo hạn"
-
-    def generate_expiring_result_file(items: List[dict]) -> bytes:
-        wb_res = load_workbook(DAO_HAN_TEMPLATE_PATH)
-        ws_res = wb_res.active
-
-        # Cột G (index 7): Thông báo
-        cell_g3 = ws_res.cell(row=3, column=7, value="Thông báo")
-        cell_f3 = ws_res.cell(row=3, column=6)
-        if cell_f3.font:
-            cell_g3.font = cell_f3.font.copy()
-        if cell_f3.alignment:
-            cell_g3.alignment = cell_f3.alignment.copy()
-        if cell_f3.border:
-            cell_g3.border = cell_f3.border.copy()
-        if cell_f3.fill:
-            cell_g3.fill = cell_f3.fill.copy()
-
-        # Xóa các dòng mẫu cũ bên dưới header (từ dòng 4 trở đi)
-        if ws_res.max_row >= 4:
-            ws_res.delete_rows(4, ws_res.max_row - 3)
-
-        thin_border = Border(
-            left=Side(style="thin", color="D1D5DB"),
-            right=Side(style="thin", color="D1D5DB"),
-            top=Side(style="thin", color="D1D5DB"),
-            bottom=Side(style="thin", color="D1D5DB"),
-        )
-        align_center = Alignment(horizontal="center", vertical="center")
-        align_left = Alignment(horizontal="left", vertical="center")
-        data_font = Font(name="Tahoma", size=10)
-        overdue_font = Font(name="Tahoma", size=10, color="DC2626", bold=True)
-
-        for idx, it in enumerate(items, start=1):
-            r_num = 3 + idx
-            c_stt = ws_res.cell(row=r_num, column=1, value=idx)
-            c_code = ws_res.cell(row=r_num, column=2, value=it["employeeCode"])
-            c_name = ws_res.cell(row=r_num, column=3, value=it["fullName"])
-            c_cccd = ws_res.cell(row=r_num, column=4, value=it["idNumber"])
-            c_onboard = ws_res.cell(row=r_num, column=5, value=it["contractOnboardDate"])
-            c_exp = ws_res.cell(row=r_num, column=6, value=it["contractExpiryDate"])
-            c_notif = ws_res.cell(row=r_num, column=7, value=it["notificationText"])
-
-            c_stt.alignment = align_center
-            c_code.alignment = align_center
-            c_name.alignment = align_left
-            c_cccd.alignment = align_center
-            c_onboard.alignment = align_center
-            c_exp.alignment = align_center
-            c_notif.alignment = align_left
-
-            for c in (c_stt, c_code, c_name, c_cccd, c_onboard, c_exp):
-                c.font = data_font
-                c.border = thin_border
-
-            c_notif.border = thin_border
-            notif_str = str(it.get("notificationText") or "")
-            if "quá hạn" in notif_str.lower():
-                c_notif.font = overdue_font
-            else:
-                c_notif.font = data_font
-
-        ws_res.cell(row=2, column=3, value=len(items))
-        ws_res.column_dimensions["G"].width = 38
-
-        output = BytesIO()
-        wb_res.save(output)
-        wb_res.close()
-        return output.getvalue()
-
-    # Reset tất cả isCalculateExpired, contractOnboardDate và contractExpiryDate về None theo yêu cầu
-    await db[COLLECTION].update_many(
-        {},
-        {
-            "$set": {
-                "isCalculateExpired": None,
-                "contractOnboardDate": None,
-                "contractExpiryDate": None,
-            }
-        },
-    )
+    # Helpers _get_notification_text and _generate_expiring_excel_file are defined at module level
 
     operations = []
     now = _now()
@@ -839,41 +1119,44 @@ async def import_expiring_contracts_data(
         raw_cccd = row[cccd_idx] if (cccd_idx is not None and cccd_idx < len(row)) else None
         id_number = parse_id_number(raw_cccd)
 
-        # Lấy giá trị cột E (Ngày gia nhập) lưu vào contractOnboardDate
-        # Tính contractExpiryDate = contractOnboardDate + 6 tháng
+        # Lấy giá trị cột E (Ngày gia nhập) lưu vào onboardDate theo rule đối soát
         raw_onboard = row[onboard_idx] if (onboard_idx is not None and onboard_idx < len(row)) else None
-        contract_onboard_date = parse_date_val(raw_onboard)
-        contract_expiry_date = add_six_months(contract_onboard_date)
-        notification_text = get_notification_text(contract_expiry_date)
+        onboard_str, onboard_dt = _parse_excel_date(raw_onboard)
+
+        # Quy tắc đối soát: Nếu ngày gia nhập trước ngày 1/4/2025 (dd/MM/yyyy) thì Ngày gia nhập = 1/4/2025
+        if onboard_dt and onboard_dt < datetime(2025, 4, 1):
+            onboard_dt = datetime(2025, 4, 1)
+            onboard_str = "2025-04-01"
+
+        # calContractExpiryDate không tính khi import (sẽ tính ở logic riêng)
+        notification_text = _get_notification_text(None)
 
         total_processed += 1
         processed_items.append({
             "employeeCode": employee_code,
             "fullName": full_name or "",
             "idNumber": id_number or "",
-            "contractOnboardDate": contract_onboard_date or "",
-            "contractExpiryDate": contract_expiry_date or "",
+            "onboardDate": onboard_str or "",
+            "calContractExpiryDate": "",
             "notificationText": notification_text,
         })
 
         if employee_code in existing_codes:
-            # Nếu CTV đã tồn tại: cập nhật field ngày gia nhập, ngày đáo hạn và isCalculateExpired = True (Requirement 3)
+            # Nếu CTV đã tồn tại: chỉ cập nhật field onboardDate (không tính calContractExpiryDate khi import)
             updated_count += 1
             operations.append(
                 UpdateOne(
                     {"employeeCode": employee_code},
                     {
                         "$set": {
-                            "contractOnboardDate": contract_onboard_date,
-                            "contractExpiryDate": contract_expiry_date,
-                            "isCalculateExpired": True,
+                            "onboardDate": onboard_str,
                             "updatedAt": now,
                         }
                     }
                 )
             )
         else:
-            # Nếu CTV chưa tồn tại: tạo mới với isCalculateExpired = True (Requirement 3)
+            # Nếu CTV chưa tồn tại: tạo mới với onboardDate và calContractExpiryDate = None
             created_count += 1
             existing_codes.add(employee_code)
             new_doc = {
@@ -881,17 +1164,15 @@ async def import_expiring_contracts_data(
                 "employeeCode": employee_code,
                 "fullName": full_name or "",
                 "idNumber": id_number,
-                "contractOnboardDate": contract_onboard_date,
-                "contractExpiryDate": contract_expiry_date,
-                "isCalculateExpired": True,
                 "createdSource": "HTR BMK",
                 "isBmkSystemExist": False,
                 "isSynced": False,
                 "departmentLevel1": None,
                 "position": None,
                 "employmentStatus": "Hiệu lực",
-                "onboardDate": None,
+                "onboardDate": onboard_str,
                 "offboardDate": None,
+                "calContractExpiryDate": None,
                 "tpbankInfo": {"contracts": []},
                 "bmkHrInfo": {
                     "contractCount": 0,
@@ -938,7 +1219,7 @@ async def import_expiring_contracts_data(
     # 2. Tạo và upload file kết quả kèm cột Thông báo lên S3 (Requirement 4)
     result_file_info = None
     try:
-        result_content = generate_expiring_result_file(processed_items)
+        result_content = _generate_expiring_excel_file(processed_items)
         result_filename = f"ket_qua_ngay_dao_han_{clean_name}"
         result_s3_key = f"expiring_contracts/results/{now_ts}_{clean_name}"
         upload_to_s3(result_content, result_s3_key)
@@ -973,7 +1254,7 @@ async def import_expiring_contracts_data(
 
     return {
         "status": "success",
-        "message": f"Đã xử lý {total_processed} dòng: tạo mới {created_count} CTV, cập nhật ngày gia nhập và ngày đáo hạn cho {updated_count} CTV.",
+        "message": f"Đã xử lý {total_processed} dòng: cập nhật ngày gia nhập cho {updated_count} CTV (tạo mới {created_count} CTV).",
         "totalProcessed": total_processed,
         "createdCount": created_count,
         "updatedCount": updated_count,
@@ -1189,8 +1470,6 @@ async def sync_bmk_system_info(
                         "employmentStatus": None,
                         "onboardDate": None,
                         "offboardDate": None,
-                        "contractOnboardDate": None,
-                        "contractExpiryDate": None,
                         "tpbankInfo": {"contracts": []},
                         "bmkHrInfo": {
                             "contractCount": 0,
@@ -1394,8 +1673,6 @@ async def import_hr_bmk_data(
                         "employmentStatus": None,
                         "onboardDate": None,
                         "offboardDate": None,
-                        "contractOnboardDate": None,
-                        "contractExpiryDate": None,
                         "tpbankInfo": {"contracts": []},
                         "bmkSystemInfo": {
                             "contractCount": 0,
@@ -1602,8 +1879,6 @@ async def import_hr_tpbank_contracts(
                 "employmentStatus": None,
                 "onboardDate": None,
                 "offboardDate": None,
-                "contractOnboardDate": None,
-                "contractExpiryDate": None,
                 "tpbankInfo": {
                     "estimatedContractCount": None,
                     "hrContractCount": contract_cnt,
@@ -1647,30 +1922,6 @@ async def import_hr_tpbank_contracts(
         "createdCount": created_count,
         "updatedCount": updated_count,
     }
-
-
-def _parse_excel_date(val) -> tuple[Optional[str], Optional[datetime]]:
-    if val is None:
-        return None, None
-    if isinstance(val, (datetime, date)):
-        if val.year == 1900:
-            return None, None
-        dt = datetime(val.year, val.month, val.day) if isinstance(val, date) and not isinstance(val, datetime) else val
-        return dt.strftime("%Y-%m-%d"), dt
-    
-    s = str(val).strip()
-    if not s or s.upper() in ["N/A", "N/A", "NONE", "-", "NULL"] or "1900" in s:
-        return None, None
-    
-    for fmt in ["%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y", "%Y/%m/%d"]:
-        try:
-            dt = datetime.strptime(s, fmt)
-            if dt.year == 1900:
-                return None, None
-            return dt.strftime("%Y-%m-%d"), dt
-        except ValueError:
-            pass
-    return None, None
 
 
 def _calculate_tpbank_contract_count(onboard_dt: Optional[datetime], offboard_dt: Optional[datetime]) -> Optional[int]:
@@ -2034,8 +2285,6 @@ async def reconcile_tpbank_data(
                             "position": None,
                             "bmkHrInfo": empty_info,
                             "bmkSystemInfo": empty_info,
-                            "contractOnboardDate": None,
-                            "contractExpiryDate": None,
                             "reconciliationStatus": "pending",
                             "createdAt": now,
                         },
