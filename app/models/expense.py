@@ -32,6 +32,8 @@ class CollaboratorExpenseSummary(BaseModel):
     fullName: str = ""
     taxCode: Optional[str] = ""
     totalPaymentCount: int = 0
+    onboardDate: Optional[str] = None
+    offboardDate: Optional[str] = None
     latestPaymentDate: Optional[str] = None
     latestPeriod: Optional[str] = None
     createdAt: Optional[str] = None
@@ -69,4 +71,5 @@ class ExpenseImportResponse(BaseModel):
     newReconciliationCreated: int
     collaboratorsCount: int
     periodsAffected: List[str] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
     message: str

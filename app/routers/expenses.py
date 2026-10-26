@@ -132,6 +132,26 @@ def format_display_date(date_str: Optional[str]) -> str:
     return s
 
 
+def format_row_ranges(row_numbers: List[int]) -> str:
+    """Gom các số dòng liên tiếp thành dạng range, ví dụ: '10-12, 15, 517-1235'."""
+    if not row_numbers:
+        return ""
+    sorted_rows = sorted(set(row_numbers))
+    ranges = []
+    start = sorted_rows[0]
+    end = start
+    for r in sorted_rows[1:]:
+        if r == end + 1:
+            end = r
+        else:
+            ranges.append(f"{start}-{end}" if start != end else f"{start}")
+            start = end = r
+    ranges.append(f"{start}-{end}" if start != end else f"{start}")
+    if len(ranges) <= 5:
+        return ", ".join(ranges)
+    return ", ".join(ranges[:5]) + f", ... (tổng {len(sorted_rows)} dòng)"
+
+
 def add_six_months(date_str: Optional[str]) -> Optional[str]:
     if not date_str:
         return None
@@ -467,23 +487,49 @@ async def import_expenses(
     actor = _actor_name(current_user)
     now_iso = _now()
 
-    # Thu thập mã CTV sẵn có trong bmk_ctv_reconciliations
+    # 1. Thu thập mã CTV sẵn có trong bmk_ctv_reconciliations
     existing_reconcil_codes = set()
     async for doc in db[RECONCILIATION_COLLECTION].find({}, {"employeeCode": 1}):
         c = doc.get("employeeCode")
         if c:
             existing_reconcil_codes.add(str(c).strip())
 
+    # 2. Thu thập thông tin CTV sẵn có trong bmk_ctv_collaborator_expenses (collection chính)
+    existing_collabs = {}
+    async for doc in db[COLLABORATOR_EXPENSES_COLLECTION].find(
+        {},
+        {"employeeCode": 1, "fullName": 1, "taxCode": 1, "onboardDate": 1, "offboardDate": 1}
+    ):
+        c = doc.get("employeeCode")
+        if c:
+            code_str = str(c).strip()
+            existing_collabs[code_str] = {
+                "fullName": doc.get("fullName", ""),
+                "taxCode": doc.get("taxCode", ""),
+                "onboardDate": doc.get("onboardDate"),
+                "offboardDate": doc.get("offboardDate"),
+                "is_new": False,
+                "update_onboard": False,
+                "update_offboard": False,
+                "latestPaymentDate": None,
+                "latestPeriod": None,
+            }
+
+    warnings_list: List[str] = []
+    warnings_seen: set = set()
+    missing_date_rows: List[int] = []
+    missing_date_net_total: float = 0.0
+    collab_tx_counter: dict = {}
+
     reconcil_ops = []
     detail_ops = []
-    collab_ops = []
 
     affected_collab_codes = set()
     periods_affected = set()
     new_reconcil_created = 0
     total_valid_rows = 0
 
-    for row in rows[header_row_idx + 1 :]:
+    for r_idx, row in enumerate(rows[header_row_idx + 1 :]):
         if not row or all(cell is None or str(cell).strip() == "" for cell in row):
             continue
 
@@ -491,6 +537,8 @@ async def import_expenses(
         employee_code = parse_employee_code(raw_code)
         if not employee_code:
             continue
+
+        excel_row_num = header_row_idx + 1 + r_idx + 1  # Số dòng thực tế (1-indexed) trong file Excel
 
         full_name = parse_str_val(row[name_idx]) if (name_idx is not None and name_idx < len(row)) else ""
         tax_code = parse_str_val(row[tax_idx]) if (tax_idx is not None and tax_idx < len(row)) else ""
@@ -507,7 +555,9 @@ async def import_expenses(
         offboard_date = parse_date_str(row[offboard_idx]) if (offboard_idx is not None and offboard_idx < len(row)) else None
 
         if not payment_date:
-            # Nếu dòng không có ngày thanh toán hợp lệ thì bỏ qua dòng đó
+            # Ghi nhận dòng thiếu ngày BMK TT để gom cảnh báo chung
+            missing_date_rows.append(excel_row_num)
+            missing_date_net_total += net_income
             continue
 
         period = calculate_period(payment_date)
@@ -562,11 +612,17 @@ async def import_expenses(
             existing_reconcil_codes.add(employee_code)
             new_reconcil_created += 1
 
-        # 2. Chuẩn bị upsert vào bmk_ctv_expense_details (Unique: employeeCode + paymentDate)
+        # 2. Chuẩn bị upsert vào bmk_ctv_expense_details
+        # Phân biệt các khoản thanh toán trong cùng ngày của cùng CTV để không bị ghi đè
+        tx_seq_key = (employee_code, tax_code, payment_date)
+        collab_tx_counter[tx_seq_key] = collab_tx_counter.get(tx_seq_key, 0) + 1
+        tx_index = collab_tx_counter[tx_seq_key]
+
         detail_doc = {
             "employeeCode": employee_code,
             "fullName": full_name,
             "taxCode": tax_code,
+            "txIndex": tx_index,
             "bankAccount": {
                 "accountName": acc_name,
                 "accountNumber": acc_num,
@@ -578,15 +634,18 @@ async def import_expenses(
             "workLocation": work_location,
             "paymentDate": payment_date,
             "paymentContent": payment_content,
-            "onboardDate": onboard_date,
-            "offboardDate": offboard_date,
             "period": period,
             "updatedAt": now_iso,
             "updatedBy": actor,
         }
         detail_ops.append(
             UpdateOne(
-                {"employeeCode": employee_code, "paymentDate": payment_date},
+                {
+                    "employeeCode": employee_code,
+                    "paymentDate": payment_date,
+                    "taxCode": tax_code,
+                    "txIndex": tx_index,
+                },
                 {
                     "$set": detail_doc,
                     "$setOnInsert": {
@@ -598,31 +657,63 @@ async def import_expenses(
             )
         )
 
-        # 3. Chuẩn bị upsert thông tin CTV vào bmk_ctv_collaborator_expenses
-        collab_doc = {
-            "employeeCode": employee_code,
-            "fullName": full_name,
-            "taxCode": tax_code,
-            "latestPaymentDate": payment_date,
-            "latestPeriod": period,
-            "updatedAt": now_iso,
-            "updatedBy": actor,
-        }
-        collab_ops.append(
-            UpdateOne(
-                {"employeeCode": employee_code},
-                {
-                    "$set": collab_doc,
-                    "$setOnInsert": {
-                        "_id": employee_code,
-                        "totalPaymentCount": 0,
-                        "createdAt": now_iso,
-                        "createdBy": actor,
-                    },
-                },
-                upsert=True,
-            )
-        )
+        # 3. Quản lý thông tin CTV ở collection chính (bmk_ctv_collaborator_expenses):
+        # - Mỗi CTV chỉ có 1 onboardDate và 1 offboardDate lưu ở collection chính.
+        # - Chỉ update từ NONE, nếu đang có giá trị mà file khác giá trị thì cảnh báo.
+        if employee_code not in existing_collabs:
+            existing_collabs[employee_code] = {
+                "fullName": full_name,
+                "taxCode": tax_code,
+                "onboardDate": onboard_date,
+                "offboardDate": offboard_date,
+                "is_new": True,
+                "update_onboard": False,
+                "update_offboard": False,
+                "latestPaymentDate": payment_date,
+                "latestPeriod": period,
+            }
+        else:
+            collab_info = existing_collabs[employee_code]
+            if full_name and not collab_info.get("fullName"):
+                collab_info["fullName"] = full_name
+            if tax_code and not collab_info.get("taxCode"):
+                collab_info["taxCode"] = tax_code
+
+            if not collab_info.get("latestPaymentDate") or (payment_date and payment_date > collab_info["latestPaymentDate"]):
+                collab_info["latestPaymentDate"] = payment_date
+                collab_info["latestPeriod"] = period
+
+            # Kiểm tra onboardDate (chỉ update từ NONE, nếu có giá trị khác thì cảnh báo)
+            curr_onboard = collab_info.get("onboardDate")
+            if onboard_date:
+                if not curr_onboard:
+                    collab_info["onboardDate"] = onboard_date
+                    collab_info["update_onboard"] = True
+                elif curr_onboard != onboard_date:
+                    warn_key = (employee_code, "onboard", curr_onboard, onboard_date)
+                    if warn_key not in warnings_seen:
+                        warnings_seen.add(warn_key)
+                        warnings_list.append(
+                            f"Dòng {excel_row_num}: CTV {employee_code} ({full_name or collab_info.get('fullName', '')}) - "
+                            f"Ngày gia nhập trong hệ thống ({format_display_date(curr_onboard)}) "
+                            f"khác ngày trong file ({format_display_date(onboard_date)})"
+                        )
+
+            # Kiểm tra offboardDate (chỉ update từ NONE, nếu có giá trị khác thì cảnh báo)
+            curr_offboard = collab_info.get("offboardDate")
+            if offboard_date:
+                if not curr_offboard:
+                    collab_info["offboardDate"] = offboard_date
+                    collab_info["update_offboard"] = True
+                elif curr_offboard != offboard_date:
+                    warn_key = (employee_code, "offboard", curr_offboard, offboard_date)
+                    if warn_key not in warnings_seen:
+                        warnings_seen.add(warn_key)
+                        warnings_list.append(
+                            f"Dòng {excel_row_num}: CTV {employee_code} ({full_name or collab_info.get('fullName', '')}) - "
+                            f"Ngày chấm dứt trong hệ thống ({format_display_date(curr_offboard)}) "
+                            f"khác ngày trong file ({format_display_date(offboard_date)})"
+                        )
 
     # Thực thi bulk operations vào MongoDB
     if reconcil_ops:
@@ -634,6 +725,60 @@ async def import_expenses(
         res = await db[EXPENSE_DETAILS_COLLECTION].bulk_write(detail_ops, ordered=False)
         imported_details = res.upserted_count
         updated_details = res.modified_count
+
+    # Chuẩn bị bulk operations cho collection chính (bmk_ctv_collaborator_expenses)
+    collab_ops = []
+    for code in affected_collab_codes:
+        info = existing_collabs.get(code)
+        if not info:
+            continue
+        if info.get("is_new"):
+            new_collab_doc = {
+                "_id": code,
+                "employeeCode": code,
+                "fullName": info.get("fullName", ""),
+                "taxCode": info.get("taxCode", ""),
+                "onboardDate": info.get("onboardDate"),
+                "offboardDate": info.get("offboardDate"),
+                "totalPaymentCount": 0,
+                "latestPaymentDate": info.get("latestPaymentDate"),
+                "latestPeriod": info.get("latestPeriod"),
+                "createdAt": now_iso,
+                "createdBy": actor,
+                "updatedAt": now_iso,
+                "updatedBy": actor,
+            }
+            collab_ops.append(
+                UpdateOne(
+                    {"employeeCode": code},
+                    {"$setOnInsert": new_collab_doc},
+                    upsert=True,
+                )
+            )
+        else:
+            set_fields = {
+                "updatedAt": now_iso,
+                "updatedBy": actor,
+            }
+            if info.get("fullName"):
+                set_fields["fullName"] = info["fullName"]
+            if info.get("taxCode"):
+                set_fields["taxCode"] = info["taxCode"]
+            if info.get("latestPaymentDate"):
+                set_fields["latestPaymentDate"] = info["latestPaymentDate"]
+            if info.get("latestPeriod"):
+                set_fields["latestPeriod"] = info["latestPeriod"]
+            if info.get("update_onboard") and info.get("onboardDate"):
+                set_fields["onboardDate"] = info["onboardDate"]
+            if info.get("update_offboard") and info.get("offboardDate"):
+                set_fields["offboardDate"] = info["offboardDate"]
+
+            collab_ops.append(
+                UpdateOne(
+                    {"employeeCode": code},
+                    {"$set": set_fields},
+                )
+            )
 
     if collab_ops:
         await db[COLLABORATOR_EXPENSES_COLLECTION].bulk_write(collab_ops, ordered=False)
@@ -652,11 +797,27 @@ async def import_expenses(
         if count_ops:
             await db[COLLABORATOR_EXPENSES_COLLECTION].bulk_write(count_ops, ordered=False)
 
+    # Gom các dòng thiếu ngày BMK TT thành 1 cảnh báo duy nhất
+    if missing_date_rows:
+        range_str = format_row_ranges(missing_date_rows)
+        warn_missing = (
+            f"Phát hiện {len(missing_date_rows)} dòng thiếu 'NGÀY BMK TT' (Dòng {range_str}) "
+            f"với tổng thực lĩnh {missing_date_net_total:,.0f} ₫. "
+            f"Các dòng này đã bị bỏ qua do không có ngày thanh toán để xác định kỳ đối soát."
+        )
+        warnings_list.insert(0, warn_missing)
+
     logger.info(
         f"Import chi phí CTV hoàn tất bởi {actor}: {total_valid_rows} dòng xử lý, "
         f"{imported_details} bản ghi mới, {updated_details} cập nhật, "
-        f"{new_reconcil_created} CTV mới tạo vào bmk_ctv_reconciliations."
+        f"{new_reconcil_created} CTV mới tạo vào bmk_ctv_reconciliations, {len(warnings_list)} cảnh báo."
     )
+
+    msg = f"Import thành công: {total_valid_rows} dòng xử lý ({imported_details} mới, {updated_details} cập nhật), thêm {new_reconcil_created} CTV vào đối soát."
+    if missing_date_rows:
+        msg += f" Cảnh báo: Bỏ qua {len(missing_date_rows)} dòng thiếu 'NGÀY BMK TT' (Dòng {format_row_ranges(missing_date_rows)})."
+    if warnings_list:
+        msg += f" Có {len(warnings_list)} cảnh báo/thông báo cần lưu ý."
 
     return ExpenseImportResponse(
         success=True,
@@ -666,7 +827,8 @@ async def import_expenses(
         newReconciliationCreated=new_reconcil_created,
         collaboratorsCount=len(affected_collab_codes),
         periodsAffected=sorted(list(periods_affected), reverse=True),
-        message=f"Import thành công: {total_valid_rows} dòng xử lý ({imported_details} mới, {updated_details} cập nhật), thêm {new_reconcil_created} CTV vào đối soát.",
+        warnings=warnings_list,
+        message=msg,
     )
 
 
@@ -675,7 +837,7 @@ async def export_expenses(
     period: Optional[str] = Query(None),
     work_location: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
-    mode: str = Query("details", enum=["details", "collaborators"]),
+    mode: str = Query("details"),
     db=Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ):
@@ -690,6 +852,8 @@ async def export_expenses(
         period = None
     if not isinstance(work_location, str):
         work_location = None
+    if not isinstance(mode, str) or mode not in ["details", "collaborators"]:
+        mode = "details"
 
     if mode == "details":
         wb = Workbook()
@@ -835,87 +999,107 @@ async def export_expenses(
         align_right = Alignment(horizontal="right", vertical="center")
         num_format_currency = '#,##0'
 
-        # Xác định số kỳ thanh toán tối đa để mở rộng cột tiêu đề nếu > 12 kỳ
+        # Xác định số kỳ thanh toán tối đa để mở rộng cột tiêu đề nếu > 3 kỳ (template có sẵn #1, #2, #3)
         max_payments = max([len(payments_by_code.get(c, [])) for c in collab_codes] or [1])
-        if max_payments > 12:
+        if max_payments > 3:
             h_font = Font(name="Times New Roman", size=11, bold=True)
             h_fill = PatternFill(start_color="FFFFFF00", end_color="FFFFFF00", fill_type="solid")
-            for p_i in range(12, max_payments):
-                b_col = 7 + p_i * 4
-                ws.merge_cells(start_row=8, start_column=b_col, end_row=8, end_column=b_col + 3)
+            for p_i in range(3, max_payments):
+                b_col = 9 + p_i * 2
+                ws.merge_cells(start_row=8, start_column=b_col, end_row=8, end_column=b_col + 1)
                 c8 = ws.cell(row=8, column=b_col, value=f"#{p_i + 1}")
                 c8.font = h_font
                 c8.alignment = align_center
                 c8.fill = h_fill
-                for offset in range(4):
-                    ws.cell(row=8, column=b_col + offset).border = thin_border
+                c8.border = thin_border
+                ws.cell(row=8, column=b_col + 1).border = thin_border
 
-                sub_titles = ["Tổng TN \nchịu thuế", "THUẾ TNCN", "THỰC LĨNH", "NGÀY BMK TT"]
-                sub_widths = [18.9, 17.3, 17.0, 15.5]
-                for offset, (title, width) in enumerate(zip(sub_titles, sub_widths)):
-                    sub_col = b_col + offset
-                    c9 = ws.cell(row=9, column=sub_col, value=title)
-                    c9.font = h_font
-                    c9.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-                    c9.fill = h_fill
-                    c9.border = thin_border
-                    col_letter = get_column_letter(sub_col)
-                    ws.column_dimensions[col_letter].width = width
+                c9_net = ws.cell(row=9, column=b_col, value="THỰC LĨNH")
+                c9_net.font = h_font
+                c9_net.alignment = align_center
+                c9_net.fill = h_fill
+                c9_net.border = thin_border
 
-        total_cols = max(54, 6 + max_payments * 4)
+                c9_date = ws.cell(row=9, column=b_col + 1, value="NGÀY BMK TT")
+                c9_date.font = h_font
+                c9_date.alignment = align_center
+                c9_date.fill = h_fill
+                c9_date.border = thin_border
+
+                col_letter_net = get_column_letter(b_col)
+                col_letter_date = get_column_letter(b_col + 1)
+                ws.column_dimensions[col_letter_net].width = 17.1
+                ws.column_dimensions[col_letter_date].width = 15.5
+
+        total_cols = max(14, 8 + max_payments * 2)
+
+        # Mở rộng merge tiêu đề bảng ở dòng 6
+        if total_cols > 9:
+            try:
+                ws.unmerge_cells('A6:I6')
+            except Exception:
+                pass
+            ws.merge_cells(start_row=6, start_column=1, end_row=6, end_column=total_cols)
 
         for idx, collab in enumerate(collabs, start=1):
             r_num = 9 + idx
+            ws.row_dimensions[r_num].height = 20.0
             code = collab.get("employeeCode", "")
             full_name = collab.get("fullName", "")
             tax_code = collab.get("taxCode", "")
+            onboard_date_str = format_display_date(collab.get("onboardDate"))
+            offboard_date_str = format_display_date(collab.get("offboardDate"))
             ctv_payments = payments_by_code.get(code, [])
             total_payments_count = len(ctv_payments) or collab.get("totalPaymentCount", 0)
-            total_taxable_income = sum(p.get("taxableIncome", 0.0) for p in ctv_payments)
+            total_net_income = sum(p.get("netIncome", 0.0) for p in ctv_payments)
 
-            # Cột thông tin cơ bản
+            # Cột thông tin cơ bản:
+            # Col 1: STT | Col 2: MNV | Col 3: HỌ VÀ TÊN | Col 4: MÃ SỐ THUẾ | Col 5: Số lần thanh toán
+            # Col 6: Ngày gia nhập | Col 7: Ngày chấm dứt | Col 8: Tổng Thực lĩnh
             c_stt = ws.cell(row=r_num, column=1, value=idx)
             c_code = ws.cell(row=r_num, column=2, value=code)
             c_name = ws.cell(row=r_num, column=3, value=full_name)
             c_tax = ws.cell(row=r_num, column=4, value=tax_code)
             c_count = ws.cell(row=r_num, column=5, value=total_payments_count)
-            c_tot_inc = ws.cell(row=r_num, column=6, value=total_taxable_income)
+            c_onboard = ws.cell(row=r_num, column=6, value=onboard_date_str)
+            c_offboard = ws.cell(row=r_num, column=7, value=offboard_date_str)
+            c_tot_net = ws.cell(row=r_num, column=8, value=total_net_income)
 
             c_stt.alignment = align_center
             c_code.alignment = align_center
             c_name.alignment = align_left
             c_tax.alignment = align_center
             c_count.alignment = align_center
-            c_tot_inc.alignment = align_right
-            c_tot_inc.number_format = num_format_currency
+            c_onboard.alignment = align_center
+            c_offboard.alignment = align_center
+            c_tot_net.alignment = align_right
+            c_tot_net.number_format = num_format_currency
 
-            for cell_obj in (c_stt, c_code, c_name, c_tax, c_count, c_tot_inc):
+            for cell_obj in (c_stt, c_code, c_name, c_tax, c_count, c_onboard, c_offboard, c_tot_net):
                 cell_obj.font = data_font
                 cell_obj.border = thin_border
 
-            # Điền các kỳ thanh toán giảm dần theo ngày thanh toán
+            # Điền các kỳ thanh toán giảm dần theo ngày thanh toán (#1 là lần gần nhất)
             for p_idx, p in enumerate(ctv_payments):
-                b_col = 7 + p_idx * 4
-                c_taxable = ws.cell(row=r_num, column=b_col, value=p.get("taxableIncome", 0.0))
-                c_tncn = ws.cell(row=r_num, column=b_col + 1, value=p.get("personalIncomeTax", 0.0))
-                c_net = ws.cell(row=r_num, column=b_col + 2, value=p.get("netIncome", 0.0))
-                c_date = ws.cell(row=r_num, column=b_col + 3, value=format_display_date(p.get("paymentDate")))
+                b_col = 9 + p_idx * 2
+                c_net = ws.cell(row=r_num, column=b_col, value=p.get("netIncome", 0.0))
+                c_date = ws.cell(row=r_num, column=b_col + 1, value=format_display_date(p.get("paymentDate")))
 
-                for num_cell in (c_taxable, c_tncn, c_net):
-                    num_cell.alignment = align_right
-                    num_cell.number_format = num_format_currency
-                    num_cell.font = data_font
-                    num_cell.border = thin_border
+                c_net.alignment = align_right
+                c_net.number_format = num_format_currency
+                c_net.font = data_font
+                c_net.border = thin_border
 
                 c_date.alignment = align_center
                 c_date.font = data_font
                 c_date.border = thin_border
 
             # Viền border cho các cột còn lại nếu CTV có ít hơn số kỳ tối đa
-            filled_cols = 6 + len(ctv_payments) * 4
+            filled_cols = 8 + len(ctv_payments) * 2
             for empty_col in range(filled_cols + 1, total_cols + 1):
                 empty_cell = ws.cell(row=r_num, column=empty_col)
                 empty_cell.border = thin_border
+                empty_cell.font = data_font
 
         filename = f"tong_hop_chi_phi_ctv_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
 
