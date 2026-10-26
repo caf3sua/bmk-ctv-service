@@ -32,6 +32,7 @@ RECONCILIATION_COLLECTION = "bmk_ctv_reconciliations"
 
 TEMPLATE_PATH = Path(__file__).resolve().parent.parent.parent / "templates" / "import_thanh_toan_phi_CTV.xlsx"
 EXPORT_TEMPLATE_PATH = Path(__file__).resolve().parent.parent.parent / "templates" / "export_thanh_toan_phi_CTV.xlsx"
+MONTHLY_EXPORT_TEMPLATE_PATH = Path(__file__).resolve().parent.parent.parent / "templates" / "export_bao_cao_chi_phi_theo_thang.xlsx"
 
 
 def _now() -> str:
@@ -1158,4 +1159,275 @@ async def export_expenses(
         output,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+@router.get("/export-monthly")
+async def export_monthly_expenses(
+    year: int = Query(..., description="Năm cần xuất báo cáo (ví dụ: 2026)"),
+    db=Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Xuất file Excel báo cáo chi phí CTV theo từng tháng của năm được chọn,
+    sử dụng template export_bao_cao_chi_phi_theo_thang.xlsx.
+    Tháng nào CTV không có dữ liệu để trống.
+    """
+    if not MONTHLY_EXPORT_TEMPLATE_PATH.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="File mẫu export_bao_cao_chi_phi_theo_thang.xlsx không tồn tại trên hệ thống",
+        )
+
+    year_str = str(year)
+    cursor = db[EXPENSE_DETAILS_COLLECTION].find({
+        "$or": [
+            {"period": {"$regex": f"^{year_str}"}},
+            {"paymentDate": {"$regex": f"^{year_str}"}}
+        ]
+    })
+    details = await cursor.to_list(100000)
+
+    # Tổng hợp theo từng CTV và từng tháng trong năm
+    collab_data = {}
+    for d in details:
+        code = d.get("employeeCode")
+        if not code:
+            continue
+        code = str(code).strip()
+
+        # Xác định tháng trong năm
+        p = str(d.get("period") or "").replace("-", "").strip()
+        month = None
+        if len(p) == 6 and p.startswith(year_str) and p[4:6].isdigit():
+            m_val = int(p[4:6])
+            if 1 <= m_val <= 12:
+                month = m_val
+        if month is None:
+            pay_date = str(d.get("paymentDate") or "").strip()
+            parts = pay_date.split("-")
+            if len(parts) >= 2 and parts[0] == year_str and parts[1].isdigit():
+                m_val = int(parts[1])
+                if 1 <= m_val <= 12:
+                    month = m_val
+
+        if month is None:
+            continue
+
+        net = float(d.get("netIncome") or 0.0)
+
+        if code not in collab_data:
+            collab_data[code] = {
+                "employeeCode": code,
+                "fullName": d.get("fullName") or "",
+                "taxCode": d.get("taxCode") or "",
+                "monthly": defaultdict(float),
+                "count": 0,
+            }
+        collab_data[code]["monthly"][month] += net
+        collab_data[code]["count"] += 1
+        if not collab_data[code]["fullName"] and d.get("fullName"):
+            collab_data[code]["fullName"] = d.get("fullName")
+        if not collab_data[code]["taxCode"] and d.get("taxCode"):
+            collab_data[code]["taxCode"] = d.get("taxCode")
+
+    # Lấy thông tin ngày gia nhập / ngày chấm dứt từ COLLABORATOR_EXPENSES_COLLECTION và RECONCILIATION_COLLECTION
+    collab_codes = list(collab_data.keys())
+    existing_collabs = {}
+    if collab_codes:
+        async for c_doc in db[COLLABORATOR_EXPENSES_COLLECTION].find(
+            {"employeeCode": {"$in": collab_codes}},
+            {"employeeCode": 1, "fullName": 1, "taxCode": 1, "onboardDate": 1, "offboardDate": 1}
+        ):
+            c_code = c_doc.get("employeeCode")
+            if c_code:
+                existing_collabs[str(c_code).strip()] = c_doc
+
+        async for r_doc in db[RECONCILIATION_COLLECTION].find(
+            {"employeeCode": {"$in": collab_codes}},
+            {"employeeCode": 1, "fullName": 1, "idNumber": 1, "onboardDate": 1, "offboardDate": 1}
+        ):
+            c_code = r_doc.get("employeeCode")
+            if c_code:
+                c_str = str(c_code).strip()
+                if c_str not in existing_collabs:
+                    existing_collabs[c_str] = r_doc
+                else:
+                    if not existing_collabs[c_str].get("onboardDate") and r_doc.get("onboardDate"):
+                        existing_collabs[c_str]["onboardDate"] = r_doc.get("onboardDate")
+                    if not existing_collabs[c_str].get("offboardDate") and r_doc.get("offboardDate"):
+                        existing_collabs[c_str]["offboardDate"] = r_doc.get("offboardDate")
+
+    # Sắp xếp danh sách CTV theo mã (số trước, chữ sau)
+    def sort_key(c):
+        return (0, int(c)) if c.isdigit() else (1, c)
+
+    sorted_codes = sorted(collab_codes, key=sort_key)
+
+    # Mở template Excel
+    wb = load_workbook(str(MONTHLY_EXPORT_TEMPLATE_PATH))
+    sheet_name = "Gui BMK" if "Gui BMK" in wb.sheetnames else wb.sheetnames[0]
+    ws = wb[sheet_name]
+
+    # Cập nhật tiêu đề báo cáo
+    title_cell = ws.cell(row=6, column=1)
+    title_cell.value = f"BẢNG THANH TOÁN PHÍ DỊCH VỤ CỘNG TÁC VIÊN NĂM {year}"
+
+    # Xóa các dòng dữ liệu cũ nếu có (từ dòng 10 trở đi)
+    if ws.max_row >= 10:
+        ws.delete_rows(10, ws.max_row - 9)
+
+    # Style chuẩn
+    data_font = Font(name="Times New Roman", size=11)
+    bold_font = Font(name="Times New Roman", size=11, bold=True)
+    thin_border = Border(
+        left=Side(style="thin", color="000000"),
+        right=Side(style="thin", color="000000"),
+        top=Side(style="thin", color="000000"),
+        bottom=Side(style="thin", color="000000"),
+    )
+    double_bottom_border = Border(
+        left=Side(style="thin", color="000000"),
+        right=Side(style="thin", color="000000"),
+        top=Side(style="thin", color="000000"),
+        bottom=Side(style="double", color="000000"),
+    )
+    total_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
+    align_center = Alignment(horizontal="center", vertical="center")
+    align_left = Alignment(horizontal="left", vertical="center")
+    align_right = Alignment(horizontal="right", vertical="center")
+    num_format_currency = "#,##0"
+
+    # Mapping cột tháng trong template:
+    # Col 9 (I): Tháng 1
+    # Col 10 (J): Tháng 2
+    # Col 11 (K): Tháng 3
+    # Col 12 (L): Để trống (duplicate Tháng 3 trong template)
+    # Col 13 (M): Tháng 4
+    # Col 14 (N): Tháng 5
+    # Col 15 (O): Tháng 6
+    # Col 16 (P): Tháng 7
+    # Col 17 (Q): Tháng 8
+    # Col 18 (R): Tháng 9
+    # Col 19 (S): Tháng 10
+    # Col 20 (T): Tháng 11
+    # Col 21 (U): Tháng 12
+    month_col_map = {
+        1: 9,
+        2: 10,
+        3: 11,
+        4: 13,
+        5: 14,
+        6: 15,
+        7: 16,
+        8: 17,
+        9: 18,
+        10: 19,
+        11: 20,
+        12: 21,
+    }
+
+    current_row = 10
+    total_year_all = 0.0
+    total_count_all = 0
+    monthly_totals_all = defaultdict(float)
+
+    for idx, code in enumerate(sorted_codes, start=1):
+        item = collab_data[code]
+        info = existing_collabs.get(code, {})
+
+        full_name = info.get("fullName") or item.get("fullName", "")
+        tax_code = info.get("taxCode") or info.get("idNumber") or item.get("taxCode", "")
+        onboard_date = info.get("onboardDate")
+        offboard_date = info.get("offboardDate")
+        tx_count = item.get("count", 0)
+
+        # Tính tổng thực lĩnh cả năm của CTV này
+        c_monthly = item["monthly"]
+        c_yearly_total = sum(c_monthly.values())
+
+        total_year_all += c_yearly_total
+        total_count_all += tx_count
+
+        # Ghi các cột cơ bản
+        ws.cell(row=current_row, column=1, value=idx)
+        ws.cell(row=current_row, column=2, value=code)
+        ws.cell(row=current_row, column=3, value=full_name)
+        ws.cell(row=current_row, column=4, value=tax_code)
+        ws.cell(row=current_row, column=5, value=tx_count)
+        ws.cell(row=current_row, column=6, value=format_display_date(onboard_date))
+        ws.cell(row=current_row, column=7, value=format_display_date(offboard_date))
+        ws.cell(row=current_row, column=8, value=c_yearly_total)
+
+        # Ghi các cột tháng (tháng nào không có để trống)
+        for m in range(1, 13):
+            col_target = month_col_map[m]
+            m_val = c_monthly.get(m)
+            if m_val and m_val > 0:
+                ws.cell(row=current_row, column=col_target, value=m_val)
+                monthly_totals_all[m] += m_val
+            else:
+                ws.cell(row=current_row, column=col_target, value=None)
+
+        # Cột L (Col 12) để trống theo đúng template
+        ws.cell(row=current_row, column=12, value=None)
+
+        # Format styles cho từng cell
+        for c_idx in range(1, 22):
+            cell = ws.cell(row=current_row, column=c_idx)
+            cell.font = data_font
+            cell.border = thin_border
+            if c_idx in (1, 2, 4, 5, 6, 7):
+                cell.alignment = align_center
+            elif c_idx == 3:
+                cell.alignment = align_left
+            else:
+                cell.alignment = align_right
+                cell.number_format = num_format_currency
+
+        current_row += 1
+
+    # Thêm dòng TỔNG CỘNG ở cuối bảng
+    ws.cell(row=current_row, column=1, value="")
+    ws.cell(row=current_row, column=2, value="")
+    ws.cell(row=current_row, column=3, value="TỔNG CỘNG")
+    ws.cell(row=current_row, column=4, value="")
+    ws.cell(row=current_row, column=5, value=total_count_all)
+    ws.cell(row=current_row, column=6, value="")
+    ws.cell(row=current_row, column=7, value="")
+    ws.cell(row=current_row, column=8, value=total_year_all)
+
+    for m in range(1, 13):
+        col_target = month_col_map[m]
+        m_tot = monthly_totals_all.get(m, 0.0)
+        ws.cell(row=current_row, column=col_target, value=m_tot if m_tot > 0 else None)
+
+    ws.cell(row=current_row, column=12, value=None)
+
+    for c_idx in range(1, 22):
+        cell = ws.cell(row=current_row, column=c_idx)
+        cell.font = bold_font
+        cell.border = double_bottom_border
+        cell.fill = total_fill
+        if c_idx in (1, 2, 4, 6, 7):
+            cell.alignment = align_center
+        elif c_idx in (3, 5):
+            cell.alignment = align_left if c_idx == 3 else align_center
+        else:
+            cell.alignment = align_right
+            cell.number_format = num_format_currency
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+    wb.close()
+
+    filename = f"bao_cao_chi_phi_ctv_theo_thang_{year}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    headers_resp = {
+        "Content-Disposition": f"attachment; filename=\"{filename}\"",
+        "Access-Control-Expose-Headers": "Content-Disposition",
+    }
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers=headers_resp,
     )
