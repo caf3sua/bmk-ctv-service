@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.core.database import connect_db, close_db
 from app.core.logging import get_logger
-from app.routers import activity_logs, auth, collaborators, users, upload_history, reconciliation
+from app.routers import activity_logs, auth, collaborators, users, upload_history, reconciliation, expenses
 
 logger = get_logger(__name__)
 
@@ -70,6 +70,7 @@ app.include_router(users.router)
 app.include_router(activity_logs.router)
 app.include_router(upload_history.router)
 app.include_router(reconciliation.router)
+app.include_router(expenses.router)
 
 @app.get("/", tags=["Root"])
 async def root():
