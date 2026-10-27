@@ -33,6 +33,7 @@ RECONCILIATION_COLLECTION = "bmk_ctv_reconciliations"
 TEMPLATE_PATH = Path(__file__).resolve().parent.parent.parent / "templates" / "import_thanh_toan_phi_CTV.xlsx"
 EXPORT_TEMPLATE_PATH = Path(__file__).resolve().parent.parent.parent / "templates" / "export_thanh_toan_phi_CTV.xlsx"
 MONTHLY_EXPORT_TEMPLATE_PATH = Path(__file__).resolve().parent.parent.parent / "templates" / "export_bao_cao_chi_phi_theo_thang.xlsx"
+DETAILS_EXPORT_TEMPLATE_PATH = Path(__file__).resolve().parent.parent.parent / "templates" / "export_bc_chi_phi_chi_tiet_theo_thang.xlsx"
 
 
 def _now() -> str:
@@ -396,6 +397,143 @@ async def list_expense_collaborators(
         "page": page,
         "page_size": page_size,
         "total_pages": total_pages,
+    }
+
+
+@router.get("/collaborators/{employee_code}")
+async def get_collaborator_expense_detail(
+    employee_code: str,
+    db=Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Lấy thông tin chi tiết cộng tác viên, bao gồm:
+    1. Thông tin chung CTV (mã, tên, MST, ngày gia nhập, ngày nghỉ, ngân hàng gần nhất)
+    2. Thống kê chi phí theo 12 tháng gần nhất từ tháng hiện tại (Thực nhận, Thuế TNCN, Tổng thu nhập)
+    3. Danh sách tất cả chi tiết thanh toán của CTV (sắp xếp giảm dần theo ngày thanh toán và số tiền)
+    """
+    code_str = str(employee_code).strip()
+    code_variants = [code_str]
+    if code_str.isdigit() and len(code_str) < 5:
+        code_variants.append(code_str.zfill(5))
+    elif code_str.isdigit() and code_str.startswith("0"):
+        code_variants.append(str(int(code_str)))
+
+    # 1. Tìm thông tin CTV trong COLLABORATOR_EXPENSES_COLLECTION
+    collab_doc = await db[COLLABORATOR_EXPENSES_COLLECTION].find_one(
+        {"employeeCode": {"$in": code_variants}}
+    )
+
+    # Nếu có thêm thông tin trong RECONCILIATION_COLLECTION
+    recon_doc = await db[RECONCILIATION_COLLECTION].find_one(
+        {"employeeCode": {"$in": code_variants}}
+    )
+
+    # 2. Lấy toàn bộ payment details của CTV này
+    cursor = db[EXPENSE_DETAILS_COLLECTION].find(
+        {"employeeCode": {"$in": code_variants}}
+    )
+    raw_details = await cursor.to_list(1000)
+
+    # Sắp xếp theo ngày BMK thanh toán và số tiền giảm dần
+    def detail_sort_key(d):
+        p_date = str(d.get("paymentDate") or "")
+        net = float(d.get("netIncome") or 0.0)
+        return (p_date, net)
+
+    raw_details.sort(key=detail_sort_key, reverse=True)
+
+    details = []
+    latest_bank = None
+    first_full_name = None
+    first_tax_code = None
+
+    for d in raw_details:
+        d["id"] = str(d.get("_id"))
+        d.pop("_id", None)
+        details.append(d)
+
+        if not latest_bank and d.get("bankAccount") and any(d["bankAccount"].values()):
+            latest_bank = d["bankAccount"]
+        if not first_full_name and d.get("fullName"):
+            first_full_name = d.get("fullName")
+        if not first_tax_code and d.get("taxCode"):
+            first_tax_code = d.get("taxCode")
+
+    # Tổng hợp thông tin CTV
+    full_name = (
+        (collab_doc.get("fullName") if collab_doc else None)
+        or (recon_doc.get("fullName") if recon_doc else None)
+        or first_full_name
+        or ""
+    )
+    tax_code = (
+        (collab_doc.get("taxCode") if collab_doc else None)
+        or (recon_doc.get("idNumber") if recon_doc else None)
+        or first_tax_code
+        or ""
+    )
+    onboard_date = (
+        (collab_doc.get("onboardDate") if collab_doc else None)
+        or (recon_doc.get("onboardDate") if recon_doc else None)
+        or (details[0].get("onboardDate") if details else None)
+    )
+    offboard_date = (
+        (collab_doc.get("offboardDate") if collab_doc else None)
+        or (recon_doc.get("offboardDate") if recon_doc else None)
+        or (details[0].get("offboardDate") if details else None)
+    )
+    total_count = (
+        len(details)
+        or (collab_doc.get("totalPaymentCount") if collab_doc else 0)
+    )
+
+    collaborator_info = {
+        "employeeCode": code_str,
+        "fullName": full_name,
+        "taxCode": tax_code,
+        "onboardDate": onboard_date,
+        "offboardDate": offboard_date,
+        "totalPaymentCount": total_count,
+        "latestPaymentDate": details[0].get("paymentDate") if details else None,
+        "latestPeriod": details[0].get("period") if details else None,
+        "bankAccount": latest_bank or {
+            "accountName": "",
+            "accountNumber": "",
+            "bankName": "",
+        },
+    }
+
+    # 3. Tính 12 tháng gần nhất từ tháng hiện tại
+    now = datetime.now()
+    monthly_stats = []
+    for i in range(11, -1, -1):
+        target_month_dt = now - relativedelta(months=i)
+        period_key = target_month_dt.strftime("%Y%m")
+        label = target_month_dt.strftime("%m/%Y")
+
+        month_payments = [
+            d for d in details
+            if str(d.get("period") or "").replace("-", "").strip() == period_key
+            or str(d.get("paymentDate") or "").startswith(target_month_dt.strftime("%Y-%m"))
+        ]
+
+        taxable_sum = sum(float(p.get("taxableIncome") or 0.0) for p in month_payments)
+        tax_sum = sum(float(p.get("personalIncomeTax") or 0.0) for p in month_payments)
+        net_sum = sum(float(p.get("netIncome") or 0.0) for p in month_payments)
+
+        monthly_stats.append({
+            "period": period_key,
+            "label": label,
+            "taxableIncome": round(taxable_sum, 2),
+            "personalIncomeTax": round(tax_sum, 2),
+            "netIncome": round(net_sum, 2),
+            "count": len(month_payments),
+        })
+
+    return {
+        "collaborator": collaborator_info,
+        "monthlyStats": monthly_stats,
+        "paymentDetails": details,
     }
 
 
@@ -903,37 +1041,50 @@ async def export_expenses(
         mode = "details"
 
     if mode == "details":
-        wb = Workbook()
-        ws = wb.active
-        ws.title = "Chi tiết thanh toán"
-        headers = [
-            "STT", "Mã CTV", "Họ và tên", "Mã số thuế", "Tên tài khoản", "Số tài khoản",
-            "Ngân hàng", "Tổng TN chịu thuế", "Thuế TNCN", "Thực lĩnh", "Nơi làm việc",
-            "Ngày BMK TT", "Nội dung TT", "Ngày gia nhập", "Ngày chấm dứt", "Kỳ thanh toán"
-        ]
-        ws.append(headers)
+        if not DETAILS_EXPORT_TEMPLATE_PATH.exists():
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="File mẫu export_bc_chi_phi_chi_tiet_theo_thang.xlsx không tồn tại trên hệ thống",
+            )
 
-        header_font = Font(name="Tahoma", size=10, bold=True, color="FFFFFF")
-        header_fill = PatternFill(start_color="1E3A8A", end_color="1E3A8A", fill_type="solid")
-        data_font = Font(name="Tahoma", size=10)
-        thin_border = Border(
-            left=Side(style="thin", color="D1D5DB"),
-            right=Side(style="thin", color="D1D5DB"),
-            top=Side(style="thin", color="D1D5DB"),
-            bottom=Side(style="thin", color="D1D5DB"),
-        )
-        align_center = Alignment(horizontal="center", vertical="center")
-        align_left = Alignment(horizontal="left", vertical="center")
-        align_right = Alignment(horizontal="right", vertical="center")
+        wb = load_workbook(str(DETAILS_EXPORT_TEMPLATE_PATH))
+        sheet_name = "Gui BMK" if "Gui BMK" in wb.sheetnames else wb.sheetnames[0]
+        ws = wb[sheet_name]
 
-        for col_idx in range(1, len(headers) + 1):
-            cell = ws.cell(row=1, column=col_idx)
-            cell.font = header_font
-            cell.fill = header_fill
-            cell.alignment = align_center
+        # Xử lý thông tin tháng và tiêu đề báo cáo
+        clean_period = str(period).strip().replace("-", "") if period else ""
+        period_month_str = ""
+        period_year_str = ""
+        if len(clean_period) >= 6 and clean_period[:4].isdigit() and clean_period[4:6].isdigit():
+            period_year_str = clean_period[:4]
+            period_month_str = clean_period[4:6]
+            title_text = f"BẢNG THANH TOÁN PHÍ DỊCH VỤ CỘNG TÁC VIÊN TỔNG HỢP THÁNG {int(period_month_str):02d} NĂM {period_year_str}"
+        elif len(clean_period) >= 4 and clean_period[:4].isdigit():
+            period_year_str = clean_period[:4]
+            title_text = f"BẢNG THANH TOÁN PHÍ DỊCH VỤ CỘNG TÁC VIÊN NĂM {period_year_str}"
+        else:
+            title_text = "BẢNG THANH TOÁN PHÍ DỊCH VỤ CỘNG TÁC VIÊN CHI TIẾT"
 
+        # Cập nhật ô tiêu đề dòng 6 (A6:M6)
+        for r_range in list(ws.merged_cells.ranges):
+            min_col, min_row, max_col, max_row = r_range.bounds
+            if min_row == 6 and max_row == 6:
+                ws.unmerge_cells(str(r_range))
+        ws.merge_cells("A6:M6")
+        title_cell = ws.cell(row=6, column=1, value=title_text)
+        title_cell.font = Font(name="Times New Roman", size=16, bold=True)
+        title_cell.alignment = Alignment(horizontal="center", vertical="center")
+        ws.row_dimensions[6].height = 28.0
+
+        # Xóa các dòng dữ liệu placeholder cũ từ dòng 9 trở đi
+        if ws.max_row >= 9:
+            ws.delete_rows(9, ws.max_row - 8)
+
+        # Xây dựng query theo tháng/period được chọn
         query = {}
-        if period and period.strip():
+        if clean_period:
+            query["period"] = clean_period
+        elif period and period.strip():
             query["period"] = period.strip()
         if work_location and work_location.strip():
             query["workLocation"] = work_location.strip()
@@ -946,45 +1097,118 @@ async def export_expenses(
                 {"taxCode": reg},
             ]
 
-        cursor = db[EXPENSE_DETAILS_COLLECTION].find(query).sort([("paymentDate", -1), ("employeeCode", 1)])
-        row_idx = 2
-        async for doc in cursor:
-            bank = doc.get("bankAccount") or {}
-            row_data = [
-                row_idx - 1,
-                doc.get("employeeCode", ""),
-                doc.get("fullName", ""),
-                doc.get("taxCode", ""),
-                bank.get("accountName", ""),
-                bank.get("accountNumber", ""),
-                bank.get("bankName", ""),
-                doc.get("taxableIncome", 0.0),
-                doc.get("personalIncomeTax", 0.0),
-                doc.get("netIncome", 0.0),
-                doc.get("workLocation", ""),
-                format_display_date(doc.get("paymentDate")),
-                doc.get("paymentContent", ""),
-                format_display_date(doc.get("onboardDate")),
-                format_display_date(doc.get("offboardDate")),
-                doc.get("period", ""),
-            ]
-            ws.append(row_data)
+        cursor = db[EXPENSE_DETAILS_COLLECTION].find(query)
+        details_list = await cursor.to_list(100000)
 
-            for col_idx in range(1, len(headers) + 1):
-                cell = ws.cell(row=row_idx, column=col_idx)
+        # Sắp xếp danh sách chi tiết: ưu tiên theo mã CTV (số trước, chữ sau), sau đó theo ngày thanh toán, và txIndex
+        def doc_sort_key(d):
+            c_code = str(d.get("employeeCode") or "").strip()
+            c_part = (0, int(c_code)) if c_code.isdigit() else (1, c_code)
+            p_date = str(d.get("paymentDate") or "")
+            tx_i = d.get("txIndex") or 0
+            return (c_part, p_date, tx_i)
+
+        details_list.sort(key=doc_sort_key)
+
+        data_font = Font(name="Times New Roman", size=11)
+        bold_font = Font(name="Times New Roman", size=11, bold=True)
+        thin_border = Border(
+            left=Side(style="thin", color="000000"),
+            right=Side(style="thin", color="000000"),
+            top=Side(style="thin", color="000000"),
+            bottom=Side(style="thin", color="000000"),
+        )
+        double_bottom_border = Border(
+            left=Side(style="thin", color="000000"),
+            right=Side(style="thin", color="000000"),
+            top=Side(style="thin", color="000000"),
+            bottom=Side(style="double", color="000000"),
+        )
+        total_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
+        align_center = Alignment(horizontal="center", vertical="center")
+        align_left = Alignment(horizontal="left", vertical="center")
+        align_right = Alignment(horizontal="right", vertical="center")
+        num_format_currency = "#,##0"
+
+        current_row = 9
+        total_taxable_income = 0.0
+        total_tax_tncn = 0.0
+        total_net_income = 0.0
+
+        for idx, doc in enumerate(details_list, start=1):
+            ws.row_dimensions[current_row].height = 20.0
+            bank = doc.get("bankAccount") or {}
+
+            taxable = float(doc.get("taxableIncome") or 0.0)
+            tax_val = float(doc.get("personalIncomeTax") or 0.0)
+            net_val = float(doc.get("netIncome") or 0.0)
+
+            total_taxable_income += taxable
+            total_tax_tncn += tax_val
+            total_net_income += net_val
+
+            # 13 cột theo mẫu export_bc_chi_phi_chi_tiet_theo_thang.xlsx:
+            ws.cell(row=current_row, column=1, value=idx)
+            ws.cell(row=current_row, column=2, value=doc.get("employeeCode", ""))
+            ws.cell(row=current_row, column=3, value=doc.get("fullName", ""))
+            ws.cell(row=current_row, column=4, value=doc.get("taxCode", ""))
+            ws.cell(row=current_row, column=5, value=bank.get("accountName", ""))
+            ws.cell(row=current_row, column=6, value=bank.get("accountNumber", ""))
+            ws.cell(row=current_row, column=7, value=bank.get("bankName", ""))
+            ws.cell(row=current_row, column=8, value=taxable)
+            ws.cell(row=current_row, column=9, value=tax_val)
+            ws.cell(row=current_row, column=10, value=net_val)
+            ws.cell(row=current_row, column=11, value=doc.get("workLocation", ""))
+            ws.cell(row=current_row, column=12, value=format_display_date(doc.get("paymentDate")))
+            ws.cell(row=current_row, column=13, value=doc.get("paymentContent", ""))
+
+            for c_idx in range(1, 14):
+                cell = ws.cell(row=current_row, column=c_idx)
                 cell.font = data_font
                 cell.border = thin_border
-                if col_idx in (1, 2, 4, 6, 12, 14, 15, 16):
+                if c_idx in (1, 2, 4, 6, 11, 12):
                     cell.alignment = align_center
-                elif col_idx in (8, 9, 10):
+                elif c_idx in (8, 9, 10):
                     cell.alignment = align_right
-                    cell.number_format = "#,##0"
+                    cell.number_format = num_format_currency
                 else:
                     cell.alignment = align_left
 
-            row_idx += 1
+            current_row += 1
 
-        filename = f"chi_tiet_chi_phi_ctv_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        # Dòng TỔNG CỘNG ở chân bảng
+        ws.row_dimensions[current_row].height = 22.0
+        ws.cell(row=current_row, column=1, value="")
+        ws.cell(row=current_row, column=2, value="")
+        ws.cell(row=current_row, column=3, value="TỔNG CỘNG")
+        ws.cell(row=current_row, column=4, value="")
+        ws.cell(row=current_row, column=5, value="")
+        ws.cell(row=current_row, column=6, value="")
+        ws.cell(row=current_row, column=7, value="")
+        ws.cell(row=current_row, column=8, value=total_taxable_income)
+        ws.cell(row=current_row, column=9, value=total_tax_tncn)
+        ws.cell(row=current_row, column=10, value=total_net_income)
+        ws.cell(row=current_row, column=11, value="")
+        ws.cell(row=current_row, column=12, value="")
+        ws.cell(row=current_row, column=13, value="")
+
+        for c_idx in range(1, 14):
+            cell = ws.cell(row=current_row, column=c_idx)
+            cell.font = bold_font
+            cell.border = double_bottom_border
+            cell.fill = total_fill
+            if c_idx == 3:
+                cell.alignment = align_left
+            elif c_idx in (8, 9, 10):
+                cell.alignment = align_right
+                cell.number_format = num_format_currency
+            else:
+                cell.alignment = align_center
+
+        if clean_period:
+            filename = f"chi_tiet_chi_phi_ctv_{clean_period}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        else:
+            filename = f"chi_tiet_chi_phi_ctv_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
 
     else:
         # Sử dụng template export_thanh_toan_phi_CTV.xlsx theo yêu cầu
